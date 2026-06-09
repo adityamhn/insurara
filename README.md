@@ -97,7 +97,7 @@ client at it to explore the assignment docs (as resources) and drive the live sy
 the *same controllers* the REST API uses (so answers match exactly). REST routers and MCP
 tools are thin adapters over `claims/application/controllers.py`.
 
-See **`REVIEWER_GUIDE.md`** for connecting a client, the full tool/resource list, and
+See [**`REVIEWER_GUIDE.md`**](./REVIEWER_GUIDE.md) for connecting a client, the full tool/resource list, and
 example questions. Quick check that MCP is live:
 
 ```bash
