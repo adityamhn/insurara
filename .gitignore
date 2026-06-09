@@ -1,0 +1,30 @@
+# ServiceNow FSO docs — local reference only (705 files, own .git). Lineage is documented in SPEC §0.
+ServiceNowDocs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# SQLite (local dev DB is swappable/regenerable from seed)
+*.db
+*.sqlite3
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+
+# NOTE: ai-artifacts/ is a REQUIRED deliverable — do NOT ignore it.

@@ -72,6 +72,35 @@ Tests must appear **before or alongside** implementation in git history (graders
 - **Required deliverables** (submission is rejected without any one): working system, `docs/domain-model.md`, `docs/decisions.md`, `docs/self-review.md`, `README.md`, `.git/` history, and `ai-artifacts/` containing **raw `.jsonl` agent session logs covering every phase**. The doc-to-spec mapping is in SPEC.md §10.
 - Self-review must be **honest and match reality** — name what's thin or skipped with the trade-off. SPEC.md §10 lists the known soft spots to disclose.
 
+## Working agreement (how to build, not just what)
+
+Aditya reads and approves every line. Write code to be read and approved, not just to run.
+
+**Think before coding.** Reason through the whole feature first, including edge cases skipped while explaining. If you spot a gap, an unhandled case, or multiple interpretations, stop and ask before implementing — don't silently pick one.
+
+**Production-grade by default.** Correct, observable, and handling the cases that are real. Long-horizon work, not demos: take the correct path, never fast-but-throwaway. Within that, write the minimum code that solves the problem — no speculative abstractions, config, fallbacks, or error handling not asked for or not a real case. If something fails, surface the failure — don't swallow it. When a feature is updated it changes; don't preserve old behavior "just in case" unless asked. Surface behavior at boundaries and state changes.
+
+**Bugs: reproduce first.** When a bug is reported, reproduce it (a failing test), then fix it, then clean up. Don't refactor unrelated code unless it materially improves correctness or clarity.
+
+**Goal-driven execution.** Turn the task into a verifiable goal and a brief plan, then loop until it's *actually verified* — not "looks done."
+
+### The loop: Explore → Plan → Code → Verify → Commit → Review
+
+Run this per milestone (Build order above / SPEC §8). Use plan mode for any multi-file milestone; skip it for typo-scale edits.
+
+- **Explore.** Delegate codebase research to the `Explore` subagent so it doesn't fill the main context.
+- **Plan.** For a milestone, write the approach down before coding.
+- **Code, test-first.** Engine unit tests appear **before or alongside** implementation in git history (graders check this) and must encode domain rules, not just HTTP status. One test per pipeline step; the §4.4 worked example (₹64k→₹41.4k) is a **mandatory** test. API: happy paths + guards (e.g. can't settle with a review pending).
+- **Verify for real, not smoke tests.** A change isn't done until a check Claude can run passes. Engine: `pytest`. Frontend: verify by **clicking through the running app** with the `browser-e2e-verifier` agent and screenshotting the reason-waterfall — never assume "looks done." After Python edits, a non-blocking hook auto-runs `ruff format` + the nearest `pytest` and surfaces failures (visibility only; it never blocks). Show the evidence (test output, screenshot), don't just assert success.
+- **Commit** — only when asked. Branch per milestone off `main` (`milestone/1-engine`, `milestone/2-persistence`, …). Conventional messages, ending with the `Co-Authored-By: Claude` trailer. One PR per milestone via `gh` when asked. Never commit/push unprompted.
+- **Review.** Before treating a milestone done, run the `domain-code-reviewer` agent on the diff in fresh context (SPEC-rule gaps, not style). Built-in `/code-review` is the generic bug-hunt; the domain reviewer adds spec awareness. Fix gaps that affect correctness or stated requirements; don't chase style or over-engineer.
+
+**ai-artifacts (mandatory deliverable).** `ai-artifacts/` must hold raw `.jsonl` agent session logs covering **every phase** — submission is rejected without it. Transcripts live at `~/.claude/projects/-Users-adityapeela-Documents-projects-realfast_assignment/*.jsonl`; the README documents the copy command, run manually at the end of each phase. (Don't gitignore `ai-artifacts/`.)
+
+## ServiceNow reference docs
+
+The domain lineage (Decisions cite "ServiceNow") is in the local `ServiceNowDocs/` clone — consult `ServiceNowDocs/markdown/financial-services-operations/insurance-claims/` when modeling coverage rules, especially `update-insurance-claims-automation-using-decision-tables.md` (maps to Decision 2, decision-table-as-data). **SPEC's simplifications override ServiceNow's full genericity** (Decisions 1/3/9/10): single line of business, 3-level coverage model, single payable, documented-not-enforced sensitivity. `ServiceNowDocs/` is gitignored (local reference only).
+
 ## Commands
 
-No build tooling exists yet — establish it during milestone 1/2/3. When you do, update this section with the real commands (backend run/test, single-test invocation, frontend dev/build, seed script). Until then there is nothing to run.
+No build tooling exists yet — establish it during milestone 1/2/3. When you do, update this section with the real commands (backend run/test, single-test invocation, frontend dev/build, seed script, and the ai-artifacts copy command). Until then there is nothing to run.

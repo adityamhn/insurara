@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run:*)",
+      "Bash(uv sync:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(pnpm:*)",
+      "Bash(npx next:*)",
+      "Bash(git add:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git commit:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh issue:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); case \"$f\" in *backend/*.py) if [ -f backend/pyproject.toml ]; then (cd backend && uv run ruff format \"$f\" && uv run pytest -q 2>&1 | tail -20); else echo 'post-edit hook: no backend/pyproject.toml yet -> skip'; fi ;; *) : ;; esac; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

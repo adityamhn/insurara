@@ -25,6 +25,10 @@ Defined terms (Sum Insured, Sub-limit, Proportionate Deduction, etc.) are in the
 
 The design borrows heavily from ServiceNow's Financial Services Operations (FSO) claims data model, simplified for scope. Where a decision cites "ServiceNow," that means we adopted their proven pattern; where it cites "simplified," we deliberately took a lighter path.
 
+### Reference material
+
+The ServiceNow FSO docs are vendored locally (gitignored, reference-only) under `ServiceNowDocs/markdown/financial-services-operations/`. When a decision below cites "ServiceNow," the source patterns live in the `insurance-claims/` subtree — most relevantly `update-insurance-claims-automation-using-decision-tables.md` (the decision-table pattern behind Decision 2), `apply-coverage-to-an-insurance-policy.md`, `set-up-policy-data-for-insurance-claims.md`, and `claim-incidents.md`. Consult them for the proven shape of a pattern, but **this spec's simplifications win** where they differ.
+
 ---
 
 ## 1. Context & scope
