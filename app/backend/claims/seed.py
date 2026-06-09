@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from .domain.enums import SubLimitBasis, SubLimitType
+from .domain.enums import LineItemStatus, SubLimitBasis, SubLimitType
 from .domain.models import LineItemInput
 from .persistence import models as orm
 from .persistence.db import (
@@ -20,7 +20,7 @@ from .persistence.db import (
     make_session_factory,
     session_scope,
 )
-from .service.claims import create_claim
+from .service.claims import create_claim, raise_dispute
 
 
 def _coverage_types() -> list[orm.CoverageType]:
@@ -197,6 +197,19 @@ def seed(session) -> dict[str, orm.Claim]:
         member_id=rohan.id,
         service_date=date(2024, 8, 1),
         line_items=[_line("hospitalization", "15000"), _line("pharmacy", "3000")],
+    )
+
+    # 8. Dispute: the member contests the denied cosmetic line on the exclusion claim;
+    #    left in `raised` so the demo can resolve (uphold/overturn) it live.
+    session.flush()
+    denied_line = next(
+        li for li in claims["exclusion"].line_items if li.status is LineItemStatus.DENIED
+    )
+    raise_dispute(
+        session,
+        claims["exclusion"],
+        line_item_id=denied_line.id,
+        reason_text="The procedure was reconstructive after an accident, not cosmetic.",
     )
 
     return claims

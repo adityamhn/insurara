@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from ..persistence.db import init_db, make_engine, make_session_factory
 from .errors import register_error_handlers
-from .routers import claims, reference
+from .routers import claims, disputes, reference
 
 
 def create_app(session_factory: sessionmaker[Session] | None = None) -> FastAPI:
@@ -34,6 +34,7 @@ def create_app(session_factory: sessionmaker[Session] | None = None) -> FastAPI:
     register_error_handlers(app)
     app.include_router(reference.router)
     app.include_router(claims.router)
+    app.include_router(disputes.router)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:

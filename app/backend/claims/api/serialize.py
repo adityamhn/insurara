@@ -110,6 +110,20 @@ def claim_summary_out(claim: orm.Claim) -> schemas.ClaimSummaryOut:
     )
 
 
+def dispute_out(dispute: orm.Dispute) -> schemas.DisputeOut:
+    return schemas.DisputeOut(
+        id=dispute.id,
+        claim_id=dispute.claim_id,
+        line_item_id=dispute.line_item_id,
+        reason_text=dispute.reason_text,
+        state=dispute.state,
+        prior_status=dispute.prior_status,
+        resolution_text=dispute.resolution_text,
+        created_at=dispute.created_at,
+        resolved_at=dispute.resolved_at,
+    )
+
+
 def claim_out(claim: orm.Claim) -> schemas.ClaimOut:
     return schemas.ClaimOut(
         **claim_summary_out(claim).model_dump(),
@@ -119,6 +133,7 @@ def claim_out(claim: orm.Claim) -> schemas.ClaimOut:
             schemas.DecisionLogOut(timestamp=log.timestamp, actor=log.actor, message=log.message)
             for log in claim.decision_logs
         ],
+        disputes=[dispute_out(d) for d in claim.disputes],
     )
 
 

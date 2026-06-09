@@ -35,8 +35,14 @@ _LINE_ITEM_TRANSITIONS: dict[LineItemStatus, frozenset[LineItemStatus]] = {
     LineItemStatus.PARTIALLY_APPROVED: frozenset({LineItemStatus.PAID, LineItemStatus.DISPUTED}),
     LineItemStatus.DENIED: frozenset({LineItemStatus.DISPUTED}),
     LineItemStatus.PAID: frozenset(),
+    # Overturn → a covered decision; uphold → restore the prior decision (which may
+    # have been a denial), so DENIED is reachable too.
     LineItemStatus.DISPUTED: frozenset(
-        {LineItemStatus.APPROVED, LineItemStatus.PARTIALLY_APPROVED}
+        {
+            LineItemStatus.APPROVED,
+            LineItemStatus.PARTIALLY_APPROVED,
+            LineItemStatus.DENIED,
+        }
     ),
 }
 

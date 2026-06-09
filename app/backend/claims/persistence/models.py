@@ -247,8 +247,11 @@ class Dispute(Base):
     line_item_id: Mapped[int | None] = mapped_column(ForeignKey("line_items.id"), default=None)
     reason_text: Mapped[str] = mapped_column(Text)
     state: Mapped[DisputeState] = mapped_column(_enum(DisputeState), default=DisputeState.RAISED)
+    # The line-item decision before the dispute, so "upheld" restores it exactly.
+    prior_status: Mapped[LineItemStatus | None] = mapped_column(_enum(LineItemStatus), default=None)
     resolution_text: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
     claim: Mapped[Claim] = relationship(back_populates="disputes")
+    line_item: Mapped[LineItem | None] = relationship()

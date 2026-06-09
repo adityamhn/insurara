@@ -76,6 +76,7 @@ class ReasonCode(str, Enum):
     COPAY = "COPAY"
     NEEDS_REVIEW = "NEEDS_REVIEW"
     REVIEW_RESOLVED = "REVIEW_RESOLVED"  # human adjuster resolved an under_review line
+    DISPUTE_OVERTURNED = "DISPUTE_OVERTURNED"  # a dispute changed a line's decision
 
 
 class PipelineStep(str, Enum):

@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from ..domain.enums import (
     ClaimStage,
     ClaimStatus,
+    DisputeState,
     LineItemStatus,
     PipelineStep,
     ReasonCode,
@@ -139,6 +140,29 @@ class DecisionLogOut(BaseModel):
     message: str
 
 
+class DisputeCreate(BaseModel):
+    line_item_id: int | None = None
+    reason_text: str = Field(min_length=1)
+
+
+class DisputeResolve(BaseModel):
+    outcome: Literal["upheld", "overturned"]
+    resolution_text: str = Field(min_length=1)
+    new_payable_amount: Decimal | None = Field(default=None, gt=0)
+
+
+class DisputeOut(BaseModel):
+    id: int
+    claim_id: int
+    line_item_id: int | None
+    reason_text: str
+    state: DisputeState
+    prior_status: LineItemStatus | None
+    resolution_text: str | None
+    created_at: datetime
+    resolved_at: datetime | None
+
+
 class ClaimSummaryOut(BaseModel):
     id: int
     policy_id: int
@@ -155,6 +179,7 @@ class ClaimOut(ClaimSummaryOut):
     policy_snapshot_id: int
     line_items: list[LineItemOut]
     decision_logs: list[DecisionLogOut]
+    disputes: list[DisputeOut]
 
 
 # --- Explanation (EOB) ------------------------------------------------------- #

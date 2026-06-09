@@ -8,11 +8,12 @@ them and records the activity stream.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from ..domain.enums import (
     ClaimStage,
+    DisputeState,
     LineItemStatus,
     PipelineStep,
     ReasonCode,
@@ -244,6 +245,164 @@ def settle_claim(session, claim: orm.Claim) -> orm.Claim:
         f"Claim settled: paid ₹{rupee(total_paid)} across {paid_count} line item(s); "
         "policy usage counters updated.",
     )
+    session.flush()
+    return claim
+
+
+def raise_dispute(
+    session,
+    claim: orm.Claim,
+    *,
+    line_item_id: int | None,
+    reason_text: str,
+) -> orm.Dispute:
+    """Member contests a decision (SPEC §5.4). A line-level dispute moves the line to
+    `disputed` (remembering its prior decision) and re-opens the claim. Disputes are
+    handled before settlement here — a paid line has no `disputed` edge (SPEC §3.4) and
+    a settled claim is closed to disputes (documented simplification)."""
+    if claim.stage in (ClaimStage.SETTLED, ClaimStage.CLOSED):
+        raise ClaimConflict(f"claim {claim.id} is {claim.stage.value}; disputes are closed")
+
+    line = None
+    prior_status = None
+    if line_item_id is not None:
+        line = next((li for li in claim.line_items if li.id == line_item_id), None)
+        if line is None:
+            raise ClaimError(f"line item {line_item_id} is not on claim {claim.id}")
+        if line.status not in (
+            LineItemStatus.APPROVED,
+            LineItemStatus.PARTIALLY_APPROVED,
+            LineItemStatus.DENIED,
+        ):
+            raise ClaimConflict(
+                f"line item {line_item_id} cannot be disputed from {line.status.value}"
+            )
+        prior_status = line.status
+        line.status = transition(line.status, LineItemStatus.DISPUTED)
+
+    dispute = orm.Dispute(
+        claim_id=claim.id,
+        line_item_id=line_item_id,
+        reason_text=reason_text,
+        state=DisputeState.RAISED,
+        prior_status=prior_status,
+    )
+    session.add(dispute)
+    # Re-open the claim while the dispute is pending (status left as last derived).
+    claim.stage = ClaimStage.UNDER_ADJUDICATION
+    target = f"line {line.ref}" if line else "claim"
+    _log(session, claim, f"Dispute raised on {target}: {reason_text}", actor="member")
+    session.flush()
+    return dispute
+
+
+def resolve_dispute(
+    session,
+    dispute: orm.Dispute,
+    *,
+    outcome: str,
+    resolution_text: str,
+    new_payable_amount: Decimal | None = None,
+) -> orm.Dispute:
+    """Resolve a dispute (SPEC §5.4). `upheld` restores the original decision;
+    `overturned` moves the line to a covered decision (optionally at a corrected
+    amount). The claim then re-derives from its line items."""
+    if dispute.state in (DisputeState.UPHELD, DisputeState.OVERTURNED):
+        raise ClaimConflict(f"dispute {dispute.id} is already resolved")
+
+    claim = dispute.claim
+    line = dispute.line_item
+
+    if outcome == "upheld":
+        if line is not None and dispute.prior_status is not None:
+            line.status = transition(line.status, dispute.prior_status)
+        dispute.state = DisputeState.UPHELD
+        verb = "upheld; the original decision stands"
+    elif outcome == "overturned":
+        if line is None:
+            raise ClaimError("an overturned dispute requires a line item")
+        billed = line.billed_amount
+        if new_payable_amount is not None:
+            if not (ZERO < new_payable_amount <= billed):
+                raise ClaimError("new_payable_amount must be 0 < x <= billed_amount")
+            payable = rupee(new_payable_amount)
+        else:
+            payable = billed  # overturn to full approval when no amount is given
+        new_status = (
+            LineItemStatus.APPROVED if payable >= billed else LineItemStatus.PARTIALLY_APPROVED
+        )
+        line.status = transition(line.status, new_status)
+        line.payable_amount = payable
+        line.reasons.append(
+            orm.Reason(
+                ordinal=len(line.reasons),
+                code=ReasonCode.DISPUTE_OVERTURNED,
+                message=f"Dispute overturned; line set to ₹{payable}. {resolution_text}",
+                amount_delta=ZERO,
+                step=PipelineStep.NEEDS_REVIEW,
+            )
+        )
+        dispute.state = DisputeState.OVERTURNED
+        verb = f"overturned; line set to ₹{payable}"
+    else:
+        raise ClaimError(f"unknown outcome '{outcome}'")
+
+    dispute.resolution_text = resolution_text
+    dispute.resolved_at = datetime.now(timezone.utc)
+
+    # Re-derive once the disputed line is back to a decided state. If other disputes are
+    # still open, the claim stays under_adjudication until they resolve too.
+    if any(li.status is LineItemStatus.DISPUTED for li in claim.line_items):
+        claim.stage = ClaimStage.UNDER_ADJUDICATION
+    else:
+        claim.status, claim.stage = derive_claim_state([li.status for li in claim.line_items])
+    _log(session, claim, f"Dispute {dispute.id} {verb}.", actor="adjuster")
+    session.flush()
+    return dispute
+
+
+def readjudicate_claim(session, claim: orm.Claim) -> orm.Claim:
+    """Re-run the engine against the claim's frozen snapshot and overwrite the stored
+    results (SPEC §5.3). Deterministic: it reproduces the original automatic decision,
+    discarding any manual review/dispute overrides — a clean reset for the demo. Not
+    allowed once settled."""
+    if claim.stage in (ClaimStage.SETTLED, ClaimStage.CLOSED):
+        raise ClaimConflict(f"claim {claim.id} is {claim.stage.value}; cannot re-adjudicate")
+
+    snapshot_dto, usage_dto = load_snapshot_dtos(claim.snapshot)
+    inputs = [
+        LineItemInput(
+            ref=li.ref,
+            coverage_type_code=li.coverage_type_code,
+            billed_amount=li.billed_amount,
+            service_days=li.service_days,
+            diagnosis_code=li.diagnosis_code,
+            provider_name=li.provider_name,
+            description=li.description,
+        )
+        for li in claim.line_items
+    ]
+    result = adjudicate_claim(snapshot_dto, inputs, usage_dto, claim.service_date)
+    results_by_ref = {r.ref: r for r in result.line_items}
+
+    for line in claim.line_items:
+        res = results_by_ref[line.ref]
+        line.reasons.clear()  # delete-orphan cascade removes the old reason rows
+        line.payable_amount = res.payable_amount
+        line.status = res.status
+        for ordinal, reason in enumerate(res.reasons):
+            line.reasons.append(
+                orm.Reason(
+                    ordinal=ordinal,
+                    code=reason.code,
+                    message=reason.message,
+                    amount_delta=reason.amount_delta,
+                    step=reason.step,
+                )
+            )
+
+    claim.status, claim.stage = result.status, result.stage
+    _log(session, claim, "Claim re-adjudicated from the frozen snapshot.")
     session.flush()
     return claim
 

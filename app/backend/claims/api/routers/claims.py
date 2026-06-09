@@ -9,7 +9,13 @@ from sqlalchemy.orm import Session
 from ...domain.enums import ClaimStage, ClaimStatus
 from ...domain.models import LineItemInput
 from ...persistence import models as orm
-from ...service.claims import create_claim, resolve_review, settle_claim
+from ...service.claims import (
+    create_claim,
+    raise_dispute,
+    readjudicate_claim,
+    resolve_review,
+    settle_claim,
+)
 from .. import schemas, serialize
 from ..deps import get_session
 from ..errors import NotFound
@@ -99,3 +105,29 @@ def resolve_line_review(
 @router.post("/{claim_id}/settle", response_model=schemas.ClaimOut)
 def settle(claim_id: int, session: Session = Depends(get_session)):
     return serialize.claim_out(settle_claim(session, _get_claim(session, claim_id)))
+
+
+@router.post("/{claim_id}/readjudicate", response_model=schemas.ClaimOut)
+def readjudicate(claim_id: int, session: Session = Depends(get_session)):
+    return serialize.claim_out(readjudicate_claim(session, _get_claim(session, claim_id)))
+
+
+@router.post("/{claim_id}/disputes", response_model=schemas.DisputeOut, status_code=201)
+def create_dispute(
+    claim_id: int,
+    body: schemas.DisputeCreate,
+    session: Session = Depends(get_session),
+):
+    dispute = raise_dispute(
+        session,
+        _get_claim(session, claim_id),
+        line_item_id=body.line_item_id,
+        reason_text=body.reason_text,
+    )
+    return serialize.dispute_out(dispute)
+
+
+@router.get("/{claim_id}/disputes", response_model=list[schemas.DisputeOut])
+def list_disputes(claim_id: int, session: Session = Depends(get_session)):
+    claim = _get_claim(session, claim_id)
+    return [serialize.dispute_out(d) for d in claim.disputes]
