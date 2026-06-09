@@ -109,6 +109,21 @@ def test_per_year_sub_limit_partial_balance_reduces():
     assert li.payable_amount == rupee("3000")  # only 10,000 - 7,000 remains
 
 
+def test_per_year_sub_limit_threads_across_lines_in_one_claim():
+    # Two dental lines in one claim must share the annual bucket: 7,000 remains
+    # (10,000 cap - 3,000 prior), so 5,000 + 5,000 -> 5,000 + 2,000, not 5,000 + 5,000.
+    snap = snapshot(codes=["dental"])
+    result = adjudicate_claim(
+        snap,
+        [line("dental", "5000", ref="d1"), line("dental", "5000", ref="d2")],
+        usage(sub_limit_consumed={"dental": "3000"}),
+        SERVICE_DATE,
+    )
+    by_ref = {li.ref: li for li in result.line_items}
+    assert by_ref["d1"].payable_amount == rupee("5000")
+    assert by_ref["d2"].payable_amount == rupee("2000")
+
+
 # 6. Deductible -----------------------------------------------------------------
 def test_deductible_absorbed_before_payout():
     snap = snapshot(deductible="5000", codes=["surgery"])
@@ -161,6 +176,13 @@ def test_exclusion_takes_precedence_over_review():
     snap = snapshot(review_threshold="100000", codes=["cosmetic"])
     li = _one(snap, line("cosmetic", "150000"))
     assert li.status is LineItemStatus.DENIED
+
+
+def test_review_threshold_is_configurable():
+    # A higher threshold lets a ₹1,50,000 line auto-adjudicate instead of routing.
+    snap = snapshot(review_threshold="200000", codes=["surgery"])
+    li = _one(snap, line("surgery", "150000"))
+    assert li.status is LineItemStatus.APPROVED
 
 
 # 9. Finalize -------------------------------------------------------------------

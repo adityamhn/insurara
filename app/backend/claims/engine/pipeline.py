@@ -198,12 +198,15 @@ def _balance_pass(
         rule = ctx.rule
         assert rule is not None
 
-        # Per-year sub-limit balance (only categories with a per_year sub-limit).
-        if (
+        has_year_sub = (
             rule.sub_limit_type is not SubLimitType.NONE
             and rule.sub_limit_basis is SubLimitBasis.PER_YEAR
-        ):
-            code = rule.code
+        )
+        code = rule.code
+
+        # Per-year sub-limit balance (cap only; the bucket is debited after the SI
+        # check below so it's debited by the final payable, never an interim value).
+        if has_year_sub:
             if code not in remaining_sub:
                 remaining_sub[code] = _annual_cap(ctx) - usage.sub_limit_consumed.get(code, ZERO)
             if remaining_sub[code] <= ZERO:
@@ -228,7 +231,6 @@ def _balance_pass(
                     )
                 )
                 ctx.payable = remaining_sub[code]
-            remaining_sub[code] -= ctx.payable
 
         # Sum-insured balance.
         if remaining_si <= ZERO:
@@ -253,7 +255,11 @@ def _balance_pass(
                 )
             )
             ctx.payable = remaining_si
+
+        # Debit both running balances by the FINAL payable (after every reduction).
         remaining_si -= ctx.payable
+        if has_year_sub:
+            remaining_sub[code] -= ctx.payable
 
 
 def _deny_exhausted(

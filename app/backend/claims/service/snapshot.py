@@ -35,6 +35,7 @@ def build_snapshot_dto(policy: orm.Policy) -> PolicySnapshot:
         deductible=plan.deductible,
         copay_percent=plan.copay_percent,
         coverage_types=rules,
+        high_value_review_threshold=plan.high_value_review_threshold,
     )
 
 

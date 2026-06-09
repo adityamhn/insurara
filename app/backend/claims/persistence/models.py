@@ -60,6 +60,8 @@ class CoveragePlan(Base):
     sum_insured: Mapped[Money] = mapped_column(Money)
     deductible: Mapped[Money] = mapped_column(Money, default="0")
     copay_percent: Mapped[Money] = mapped_column(Money, default="0")
+    # Auto-vs-human split (Decision 9): line items billed above this route to review.
+    high_value_review_threshold: Mapped[Money] = mapped_column(Money, default="100000")
 
     coverage_types: Mapped[list[CoverageType]] = relationship(
         back_populates="plan", cascade="all, delete-orphan"

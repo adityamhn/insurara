@@ -34,6 +34,13 @@ def create_claim(
     policy = session.get(orm.Policy, policy_id)
     if policy is None:
         raise ClaimError(f"policy {policy_id} not found")
+    if policy.status != "in_force":
+        raise ClaimError(f"policy {policy.policy_number} is {policy.status}; cannot accept claims")
+    if not (policy.start_date <= service_date <= policy.end_date):
+        raise ClaimError(
+            f"service date {service_date} is outside the policy period "
+            f"({policy.start_date} to {policy.end_date})"
+        )
     if not any(link.member_id == member_id for link in policy.members):
         raise ClaimError(f"member {member_id} is not insured on policy {policy_id}")
 

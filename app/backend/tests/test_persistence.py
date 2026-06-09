@@ -1,13 +1,15 @@
 """Persistence + service round-trips: the engine's decision survives a DB round-trip,
 money stays exact, and snapshots are immune to later policy edits (Decision 7)."""
 
+from datetime import date
 from decimal import Decimal
 
 from claims.domain.enums import ClaimStatus, ReasonCode
 from claims.domain.models import LineItemInput
 from claims.domain.money import rupee
 from claims.engine.pipeline import adjudicate_claim
-from claims.service.snapshot import load_snapshot_dtos
+from claims.persistence import models as orm
+from claims.service.snapshot import build_snapshot_dto, load_snapshot_dtos
 
 
 def test_worked_example_persists_with_ordered_reasons(seeded):
@@ -66,3 +68,26 @@ def test_snapshot_isolated_from_later_policy_edits(seeded):
     ]
     result = adjudicate_claim(snap2, inputs, usage2, claim.service_date)
     assert result.totals.total_payable == rupee("41400")
+
+
+def test_plan_review_threshold_flows_into_snapshot(session):
+    # A plan-level review threshold must reach the snapshot (not the Python default).
+    plan = orm.CoveragePlan(
+        name="Custom Threshold Plan",
+        sum_insured=Decimal("100000"),
+        high_value_review_threshold=Decimal("250000"),
+        coverage_types=[orm.CoverageType(code="surgery", name="Surgery")],
+    )
+    session.add(plan)
+    session.flush()
+    policy = orm.Policy(
+        policy_number="CUSTOM-0001",
+        plan_id=plan.id,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 12, 31),
+    )
+    session.add(policy)
+    session.flush()
+
+    snap = build_snapshot_dto(policy)
+    assert snap.high_value_review_threshold == Decimal("250000")
