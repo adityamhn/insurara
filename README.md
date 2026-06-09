@@ -87,6 +87,25 @@ and dispute via the documented endpoints.
 
 ---
 
+## Reviewer MCP (mounted in the backend)
+
+The same backend process also serves an **MCP server at `http://localhost:8000/mcp`**
+(streamable HTTP) — starting `uvicorn` starts it too, no separate process. Point any MCP
+client at it to explore the assignment docs (as resources) and drive the live system with
+the *same controllers* the REST API uses (so answers match exactly). REST routers and MCP
+tools are thin adapters over `claims/application/controllers.py`.
+
+See **`REVIEWER_GUIDE.md`** for connecting a client, the full tool/resource list, and
+example questions. Quick check that MCP is live:
+
+```bash
+curl -s -X POST localhost:8000/mcp/ \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}'
+```
+
+---
+
 ## AI collaboration artifacts
 
 Raw agent session logs (`.jsonl`) covering every phase live in `ai-artifacts/`. They were

@@ -29,6 +29,18 @@ def seeded(session):
 
 
 @pytest.fixture
+def seeded_factory(tmp_path):
+    """A session factory bound to a seeded temp DB — used by controller and MCP tests."""
+    engine = make_engine(f"sqlite:///{tmp_path / 'factory.db'}")
+    init_db(engine)
+    factory = make_session_factory(engine)
+    with factory() as s:
+        seed(s)
+        s.commit()
+    return factory
+
+
+@pytest.fixture
 def client(tmp_path):
     """A TestClient backed by a seeded temp DB (full app, real adjudication)."""
     from fastapi.testclient import TestClient
