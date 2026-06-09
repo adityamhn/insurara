@@ -54,7 +54,14 @@ def persist_snapshot(
     session, policy: orm.Policy
 ) -> tuple[orm.PolicySnapshot, PolicySnapshot, UsageCounters]:
     """Build the frozen DTOs, store them as exact pydantic JSON, and return both the
-    ORM row and the DTOs (so the caller can adjudicate without re-reading)."""
+    ORM row and the DTOs (so the caller can adjudicate without re-reading).
+
+    SEQUENTIAL ASSUMPTION (SPEC §3.3, deliberate simplification): usage counters are
+    snapshotted at creation and only advance on settlement, so two claims created
+    against the same policy before either settles both see the same headroom and could
+    together over-consume the sum insured. The demo settles claims sequentially;
+    concurrency control (row locks / settlement-time re-check) is out of scope and is
+    called out in docs/self-review.md."""
     snapshot_dto = build_snapshot_dto(policy)
     usage_dto = build_usage_dto(policy)
     row = orm.PolicySnapshot(

@@ -79,15 +79,15 @@ def step_waiting_period(ctx: AdjudicationContext) -> StepResult:
 
 
 def step_needs_review(ctx: AdjudicationContext) -> StepResult:
-    """8 (applied early). Auto-vs-human split (Decision 9): a line billed above the
+    """Step 8 (SPEC §4.2). Auto-vs-human split (Decision 9): a line billed above the
     high-value threshold can't be auto-decided → route to UNDER_REVIEW.
 
-    Placed after the hard denials (coverage/waiting) but before the money reductions:
-    a reviewer re-decides the whole line, so running it through caps/copay first would
-    only produce reasons that get discarded. Documented deviation from §4.2's ordinal.
-    """
+    Runs LAST, after every automatic reduction, so the line carries its fully-computed
+    (capped/scaled/co-paid) payable. That computed amount is the rules-allowed ceiling
+    the adjuster confirms or reduces — it must never be bypassed by routing early.
+    Skips lines that already reduced to zero (nothing to review)."""
     threshold = ctx.snapshot.high_value_review_threshold
-    if ctx.line.billed_amount > threshold:
+    if ctx.line.billed_amount > threshold and ctx.payable > ZERO:
         return StepResult(
             payable=ctx.payable,
             terminal_status=LineItemStatus.UNDER_REVIEW,
@@ -96,7 +96,8 @@ def step_needs_review(ctx: AdjudicationContext) -> StepResult:
                     code=ReasonCode.NEEDS_REVIEW,
                     message=(
                         f"Routed for manual review: billed {_rupees(ctx.line.billed_amount)} "
-                        f"exceeds the {_rupees(threshold)} auto-adjudication threshold."
+                        f"exceeds the {_rupees(threshold)} auto-adjudication threshold "
+                        f"(rules-allowed payable so far: {_rupees(ctx.payable)})."
                     ),
                     amount_delta=ZERO,
                     step=PipelineStep.NEEDS_REVIEW,

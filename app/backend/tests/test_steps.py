@@ -167,8 +167,27 @@ def test_high_value_line_routes_to_review():
     snap = snapshot(review_threshold="100000", codes=["surgery"])
     li = _one(snap, line("surgery", "150000"))
     assert li.status is LineItemStatus.UNDER_REVIEW
-    assert li.payable_amount == rupee("0")
-    assert li.reasons[0].code is ReasonCode.NEEDS_REVIEW
+    # The routed line carries its rules-allowed payable (here uncapped, no copay).
+    assert li.payable_amount == rupee("150000")
+    assert li.reasons[-1].code is ReasonCode.NEEDS_REVIEW
+
+
+def test_high_value_line_is_capped_before_review():
+    # Regression: needs-review runs AFTER the sub-limit cap, so a routed room-rent line
+    # carries the capped ₹5,000 — not the billed ₹1,50,000 — as the adjuster's ceiling.
+    snap = snapshot(review_threshold="100000", codes=["room_rent"])
+    li = _one(snap, line("room_rent", "150000"))
+    assert li.status is LineItemStatus.UNDER_REVIEW
+    assert li.payable_amount == rupee("5000")  # 1% of 5,00,000, capped before routing
+    codes = {r.code for r in li.reasons}
+    assert ReasonCode.SUB_LIMIT in codes and ReasonCode.NEEDS_REVIEW in codes
+
+
+def test_review_threshold_boundary_is_exclusive():
+    # Billed exactly at the threshold does NOT route (spec uses "above").
+    snap = snapshot(review_threshold="100000", codes=["surgery"])
+    li = _one(snap, line("surgery", "100000"))
+    assert li.status is LineItemStatus.APPROVED
 
 
 def test_exclusion_takes_precedence_over_review():

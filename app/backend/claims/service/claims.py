@@ -145,11 +145,20 @@ def resolve_review(
         raise ClaimConflict(f"line item {line_item_id} is not under review")
 
     billed = line.billed_amount
+    # The adjuster may confirm or reduce, never exceed, the rules-allowed amount the
+    # engine already computed (caps/proportionate/copay) before routing to review.
+    allowed = line.payable_amount
     if decision == "approve":
-        new_status, new_payable, verb = LineItemStatus.APPROVED, billed, "approved in full"
+        new_payable = allowed
+        new_status = (
+            LineItemStatus.APPROVED if allowed >= billed else LineItemStatus.PARTIALLY_APPROVED
+        )
+        verb = f"approved the rules-allowed ₹{allowed}"
     elif decision == "partially_approve":
-        if payable_amount is None or not (ZERO < payable_amount < billed):
-            raise ClaimError("partially_approve requires 0 < payable_amount < billed_amount")
+        if payable_amount is None or not (ZERO < payable_amount <= allowed):
+            raise ClaimError(
+                f"partially_approve requires 0 < payable_amount <= the rules-allowed ₹{allowed}"
+            )
         new_payable = rupee(payable_amount)
         new_status, verb = (
             LineItemStatus.PARTIALLY_APPROVED,

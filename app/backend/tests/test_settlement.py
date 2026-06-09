@@ -107,6 +107,49 @@ def test_resolve_partial_without_amount_is_rejected(client):
     assert resp.status_code == 400
 
 
+# --- Adjuster cannot exceed the rules-allowed amount (B1 regression) --------- #
+def _high_value_room_claim(client):
+    pid, mid = _policy_and_member(client, "HS5L-FAMILY-0001")  # copay 10%, room cap ₹5,000
+    return client.post(
+        "/api/claims",
+        json={
+            "policy_id": pid,
+            "member_id": mid,
+            "service_date": "2024-06-01",
+            "line_items": [{"coverage_type_code": "room_rent", "billed_amount": "150000"}],
+        },
+    ).json()
+
+
+def test_high_value_line_is_capped_before_review_via_api(client):
+    claim = _high_value_room_claim(client)
+    line = claim["line_items"][0]
+    assert line["status"] == "under_review"
+    # ₹5,000 cap × 0.90 copay = ₹4,500 — NOT the billed ₹1,50,000.
+    assert line["payable_amount"] == "4500.00"
+    assert {r["code"] for r in line["reasons"]} >= {"SUB_LIMIT", "NEEDS_REVIEW"}
+
+
+def test_review_approve_cannot_exceed_cap(client):
+    claim = _high_value_room_claim(client)
+    line = claim["line_items"][0]
+    resolved = client.post(
+        f"/api/claims/{claim['id']}/line-items/{line['id']}/resolve-review",
+        json={"decision": "approve"},
+    ).json()
+    assert resolved["line_items"][0]["payable_amount"] == "4500.00"
+
+
+def test_review_partial_above_allowed_is_rejected(client):
+    claim = _high_value_room_claim(client)
+    line = claim["line_items"][0]
+    resp = client.post(
+        f"/api/claims/{claim['id']}/line-items/{line['id']}/resolve-review",
+        json={"decision": "partially_approve", "payable_amount": "100000"},
+    )
+    assert resp.status_code == 400  # 100000 > rules-allowed 4500
+
+
 # --- Stateful across time: exhaustion across sequential claims --------------- #
 def test_sum_insured_exhausts_across_sequential_settled_claims(client):
     pid, mid = _policy_and_member(client, "AS3L-CLEAN-0003")  # SI 3,00,000

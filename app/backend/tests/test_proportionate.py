@@ -58,6 +58,21 @@ def test_no_breach_means_no_proportionate_deduction():
     assert by_ref["surgery"].status is LineItemStatus.APPROVED
 
 
+def test_proportionate_and_deductible_combine():
+    # Proportionate (Pass B) then deductible (Pass D): surgery scales to 25,000 and is
+    # untouched by the deductible; the ₹2,000 deductible is absorbed by the first line.
+    snap = snapshot(deductible="2000", codes=["room_rent", "surgery"])
+    result = adjudicate_claim(
+        snap,
+        [line("room_rent", "8000", ref="room"), line("surgery", "40000", ref="surgery")],
+        usage(),
+        SERVICE_DATE,
+    )
+    by_ref = {li.ref: li for li in result.line_items}
+    assert by_ref["surgery"].payable_amount == rupee("25000")  # 40000 * 0.625
+    assert by_ref["room"].payable_amount == rupee("3000")  # 5000 cap - 2000 deductible
+
+
 def test_ratio_uses_billed_room_rent_not_capped_value():
     # ratio must be cap/billed = 5000/8000 = 0.625, not cap/cap.
     result = _claim(

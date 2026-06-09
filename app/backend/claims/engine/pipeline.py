@@ -49,10 +49,11 @@ from .steps import (
 )
 
 # Per-line steps run in order until one short-circuits to a terminal status (Pass A).
+# Needs-review is deliberately NOT here — it runs last (after every reduction) so the
+# adjuster sees the fully-computed, rules-capped payable (SPEC §4.2 step 8).
 _PER_LINE_STEPS = (
     step_coverage,
     step_waiting_period,
-    step_needs_review,
     step_sub_limit_cap,
 )
 
@@ -86,8 +87,14 @@ def adjudicate_claim(
         if not ctx.is_terminal:
             _apply(ctx, step_copay(ctx))
 
-    results = [_finalize(ctx) for ctx in contexts]  # Pass F
-    status, stage = derive_claim_state([r.status for r in results])  # Pass G
+    # Pass F — needs-review (step 8): runs last so the routed line keeps its fully
+    # computed, rules-capped payable as the adjuster's ceiling.
+    for ctx in contexts:
+        if not ctx.is_terminal:
+            _apply(ctx, step_needs_review(ctx))
+
+    results = [_finalize(ctx) for ctx in contexts]  # Pass G — finalize
+    status, stage = derive_claim_state([r.status for r in results])  # Pass H — derive
     return ClaimResult(line_items=results, status=status, stage=stage, totals=_totals(results))
 
 
@@ -305,10 +312,11 @@ def _deductible_pass(
 # --------------------------------------------------------------------------- #
 def _finalize(ctx: AdjudicationContext) -> LineItemResult:
     if ctx.terminal_status is not None:
-        # Terminal here is only DENIED or UNDER_REVIEW — neither has a payout:
-        # denied pays nothing, under_review is decided later by a human.
+        # Terminal here is DENIED (already at ₹0) or UNDER_REVIEW (carries its
+        # fully-computed, rules-capped payable as the adjuster's ceiling, pending a
+        # human decision). Either way ctx.payable already holds the right amount.
         status = ctx.terminal_status
-        payable = ZERO
+        payable = ctx.payable
     else:
         billed = rupee(ctx.line.billed_amount)
         if ctx.payable >= billed:
