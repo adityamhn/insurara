@@ -5,7 +5,7 @@ An honest assessment — what's solid, what's thin, and what I'd do with more ti
 ## What's strong
 
 - **The adjudication engine.** Pure, deterministic, DB-free
-  (`app/backend/claims/engine/`), and the most thoroughly tested part: the §4.4 worked
+  (`app/backend/claims/engine/`), and the most thoroughly tested part: the worked
   example (₹64,000 → ₹41,400), one test per pipeline step, proportionate deduction with the
   IRDAI-2024 exclusions, sum-insured / per-year sub-limit exhaustion, the state-derivation
   rule, and the money invariant. Tests encode domain rules, not HTTP status codes.
@@ -26,15 +26,14 @@ An honest assessment — what's solid, what's thin, and what I'd do with more ti
 
 - **Sequential settlement only (concurrency).** Counters are snapshotted at creation and
   applied on settlement; two claims opened before either settles both see the same headroom
-  and could together over-consume the Sum Insured. This is the SPEC §3.3 stated
-  simplification. A production fix needs row-level locks or a settlement-time
-  `consumed + payable ≤ sum_insured` re-check (returning 409). Documented in
-  `service/snapshot.py`.
-- **The §4.2-vs-§4.3 ordering ambiguity.** The spec contradicts itself on whether the
-  sum-insured balance check runs before or after proportionate deduction. I chose §4.2's
-  explicit numbering (proportionate before the SI ceiling) and documented it; a reviewer
-  could reasonably want the other order. It only matters when a room-rent breach and SI
-  exhaustion collide in one claim — untested in combination beyond reasoning.
+  and could together over-consume the Sum Insured. This is a deliberate simplification. A
+  production fix needs row-level locks or a settlement-time `consumed + payable ≤ sum_insured`
+  re-check (returning 409). Documented in `service/snapshot.py`.
+- **The proportionate-vs-sum-insured ordering.** There are two defensible orderings for where
+  the sum-insured ceiling sits relative to proportionate deduction. I scale associated charges
+  first and apply the SI ceiling last (SI is the overall pool cap); a reviewer could reasonably
+  want the other order. It only matters when a room-rent breach and SI exhaustion collide in
+  one claim — untested in combination beyond reasoning.
 - **Needs-review is a flat threshold**, not real triage/ML. It's a stand-in for the
   auto-vs-human split; one realistic trigger, plan-configurable.
 - **Auth, encryption, RBAC: not built** (out of scope). Sensitive fields are tagged in the
@@ -67,7 +66,7 @@ An honest assessment — what's solid, what's thin, and what I'd do with more ti
 
 ## What I'd do next with more time
 1. Settlement-time limit re-check + optimistic locking for true concurrency safety.
-2. A few API tests for the §4.2/§4.3 ordering edge (breach + exhaustion together).
+2. A few API tests for the proportionate-vs-sum-insured ordering edge (breach + exhaustion together).
 3. Eager-loading + pagination on the claims list.
 4. A small Playwright suite for the three core UI flows.
 5. Resolve the ordering ambiguity with the assignment authors rather than choosing.

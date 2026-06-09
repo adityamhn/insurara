@@ -1,8 +1,8 @@
 # Decisions & Trade-offs
 
-Two layers: (A) the settled design decisions (from `SPEC.md` §2, lineage from ServiceNow
-FSO), and (B) the concrete implementation calls made while building — including places the
-spec was ambiguous or where a bug forced a decision.
+Two layers: (A) the settled design decisions (with their ServiceNow FSO lineage and the
+simplification taken), and (B) the concrete implementation calls made while building —
+including places where the requirements were ambiguous or where a bug forced a decision.
 
 ---
 
@@ -35,18 +35,19 @@ exclusions — these make the pipeline and the explanations meaningful.
 
 ## B. Implementation calls made during the build
 
-### B1 — Adjudication pipeline ordering (a genuine SPEC contradiction)
-SPEC §4.2 numbers the steps coverage → waiting → **sub-limit cap (3)** →
-**proportionate (4)** → **balance (5)** → deductible (6) → copay (7) → needs-review (8) →
-finalize (9). But §4.3's prose puts balance in the "first pass" and proportionate "second,"
-which is the reverse.
+### B1 — Adjudication pipeline ordering (two natural orderings conflict)
+The pipeline runs: coverage → waiting → **sub-limit cap** → **proportionate deduction** →
+**sum-insured / per-year balance** → deductible → co-payment → needs-review → finalize. The
+one genuinely debatable point is where proportionate deduction sits relative to the
+sum-insured ceiling: scale the associated charges first, or apply the overall ceiling first?
 
-**Call:** followed §4.2's explicit numbering — sub-limit cap → proportionate-scale
-associated charges → sum-insured as the *final* ceiling. This is also the domain-sensible
-reading (SI is the overall pool cap, applied last). The §4.4 worked example yields ₹41,400
-either way; the orderings only diverge when a room-rent breach and SI exhaustion co-occur in
-one claim. Implemented as a per-line pass A (coverage/waiting/sub-limit) → claim-level
-proportionate pass → claim-level balance pass.
+**Call:** I cap each line to its sub-limit, then proportionate-scale the associated charges,
+then treat the sum insured as the *final* ceiling — the domain-sensible reading, since SI is
+the overall pool cap and should bound whatever the per-category rules allow. The worked
+example (₹64,000 → ₹41,400) yields the same result either way; the orderings only diverge
+when a room-rent breach and SI exhaustion co-occur in one claim. Implemented as a per-line
+pass A (coverage/waiting/sub-limit) → claim-level proportionate pass → claim-level balance
+pass.
 
 ### B2 — Cross-line steps run as claim-level passes
 Proportionate deduction is cross-line (room-rent breach scales *other* lines), and the
@@ -55,9 +56,10 @@ The per-year sub-limit / sum-insured balance pass threads in-claim consumption a
 so a claim can't exceed a limit by splitting an amount across line items.
 
 ### B3 — Deductible: claim-level, once, after the proportionate pass
-SPEC §4.3 offered this as the cleaner option; chosen and documented. Co-payment is applied
-**per line** — mathematically identical to a claim-level copay (it's linear) and keeps each
-line's waterfall self-contained.
+The deductible is a single per-claim amount, so it's applied once at claim level after the
+proportionate pass (the cleaner of the orderings). Co-payment is applied **per line** —
+mathematically identical to a claim-level copay (it's linear) and keeps each line's waterfall
+self-contained.
 
 ### B4 — Needs-review runs LAST (step 8), and the adjuster is bounded by the computed amount
 **This started as a bug.** The first cut routed high-value lines to `under_review` *before*
@@ -83,7 +85,7 @@ exactly.
 Counters increment on settlement, not adjudication. Settlement is blocked (409) if any line
 is `under_review`, any line is `disputed`, or any dispute is open — so a claim can't reach
 `settled` with unresolved state. Disputes are handled before settlement (a `paid` line has
-no `disputed` edge per §3.4; a settled claim is closed to disputes).
+no `disputed` edge in the line-item machine; a settled claim is closed to disputes).
 
 ### B8 — `readjudicate` is a deterministic reset
 Re-runs the engine from the frozen snapshot and overwrites stored results, discarding manual

@@ -4,8 +4,8 @@ Indian health-insurance **reimbursement** claims: a member pays a provider, then
 the money back. All adjudication happens after submission — there is no real-time hospital
 round-trip to model.
 
-Source of truth for the rules is `SPEC.md`; this document describes what was actually
-built and where it lives in the code.
+This document describes the domain model — the entities, the two state machines, and where
+each lives in the code.
 
 ---
 
@@ -46,8 +46,8 @@ Dispute
   └── prior_status           the decision before the dispute, so "upheld" restores it
 ```
 
-Code: pure domain DTOs in `app/backend/claims/domain/models.py`; ORM tables (mirroring
-SPEC §6.2) in `app/backend/claims/persistence/models.py` — tables `coverage_plans`,
+Code: pure domain DTOs in `app/backend/claims/domain/models.py`; ORM tables in
+`app/backend/claims/persistence/models.py` — tables `coverage_plans`,
 `coverage_types`, `policies`, `policy_members`, `members`, `policy_snapshots`, `claims`,
 `line_items`, `reasons`, `decision_logs`, `disputes`.
 
@@ -106,8 +106,7 @@ disputed ──upheld───────────────────�
 
 **Stage** (coarse lifecycle): `submitted → under_adjudication → decided → settled → closed`.
 
-**Status** is **DERIVED** from the line items, never set directly
-(`derive_claim_state`, SPEC §3.4 verbatim):
+**Status** is **DERIVED** from the line items, never set directly (`derive_claim_state`):
 
 ```
 if any line item is under_review   → status = needs_review,        stage = under_adjudication
@@ -133,7 +132,7 @@ At claim creation, the policy terms + usage counters are frozen into a `PolicySn
 snapshot, so later edits to the live policy never change a past claim's outcome. Verified
 by `test_snapshot_isolated_from_later_policy_edits`.
 
-## 5. Usage tracking (stateful across time — SPEC §3.3)
+## 5. Usage tracking (stateful across time)
 
 Live counters on `policies`: `sum_insured_consumed`, `deductible_consumed`, and a
 `sub_limit_consumed` JSON map (per-year sub-limits only). Incremented **on settlement**,
