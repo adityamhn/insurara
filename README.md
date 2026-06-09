@@ -9,7 +9,7 @@ state from its line items → explain every deduction → dispute and re-derive.
 - **Frontend:** Next.js (App Router, TypeScript) + Tailwind.
 
 See `docs/domain-model.md`, `docs/decisions.md`, and `docs/self-review.md` for the design,
-trade-offs, and an honest gap list. `SPEC.md` is the authoritative build spec.
+trade-offs, and an honest gap list.
 
 ```
 app/
@@ -21,41 +21,43 @@ ai-artifacts/ raw .jsonl agent session logs (required deliverable)
 
 ---
 
-## Prerequisites
-- [uv](https://docs.astral.sh/uv/) (manages Python 3.11+ automatically)
-- Node 20+ and npm
+## Quick start
 
-## 1. Backend (port 8000)
+Prerequisites: [uv](https://docs.astral.sh/uv/) (manages Python 3.11+ automatically) and
+Node 20+ / npm.
 
 ```bash
-cd app/backend
-uv sync                              # install deps into .venv
-uv run python -m claims.seed         # create claims.db with the 8 demo scenarios
-uv run uvicorn claims.api.app:app --port 8000
+./setup.sh    # backend deps (uv sync) + seed the demo DB + frontend deps (npm install)
+./dev.sh      # run backend on :8000 (REST + MCP) and frontend on :3000 together
 ```
 
-- API docs (Swagger): http://localhost:8000/docs
-- Health: http://localhost:8000/health → `{"status":"ok"}`
-- Re-run `python -m claims.seed` any time to reset the demo data.
+Then open **http://localhost:3000**. API docs (Swagger) at **http://localhost:8000/docs**,
+health at `/health`. Re-run `./setup.sh` (or `cd app/backend && uv run python -m claims.seed`)
+any time to reset the demo data.
+
+Env defaults — override only if needed: `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`,
+`CLAIMS_DB_URL` (a SQLite file at `app/backend/claims.db`).
+
+<details>
+<summary>Manual setup, without the scripts</summary>
+
+```bash
+# backend (port 8000, also serves /mcp) — terminal 1
+cd app/backend && uv sync && uv run python -m claims.seed
+uv run uvicorn claims.api.app:app --port 8000
+
+# frontend (port 3000) — terminal 2
+cd app/frontend && npm install && npm run dev
+```
+</details>
 
 ### Tests
 ```bash
-cd app/backend
-uv run pytest -q                     # 83 tests
-uv run pytest tests/test_worked_example.py    # the §4.4 worked example (₹64,000 → ₹41,400)
+cd app/backend && uv run pytest -q             # 96 tests
+uv run pytest tests/test_worked_example.py     # the worked example (₹64,000 → ₹41,400)
 ```
-The engine tests encode domain rules (one per pipeline step + the composite worked
-example), not just HTTP status codes.
-
-## 2. Frontend (port 3000)
-
-```bash
-cd app/frontend
-npm install
-npm run dev                          # http://localhost:3000  (expects backend on :8000)
-```
-The API base URL is configurable via `NEXT_PUBLIC_API_BASE_URL` (default
-`http://localhost:8000`). Production build / lint: `npm run build`, `npm run lint`.
+The engine tests encode domain rules (one per pipeline step + the composite worked example),
+not just HTTP status codes. Frontend checks: `cd app/frontend && npm run lint && npm run build`.
 
 ---
 
@@ -67,7 +69,7 @@ story:
 | Claim | Scenario | What it shows |
 |------:|----------|---------------|
 | #1 | **Clean approval** | small claim within limits, no co-pay → `approved`, no deductions |
-| #2 | **Room rent + proportionate deduction** (the §4.4 example) | room ₹8,000 → ₹4,500 (cap), surgery ₹40,000 → ₹22,500 (ratio 0.625), pharmacy/diagnostics untouched (IRDAI 2024), 10% co-pay → **₹41,400** payable, `partially_approved` |
+| #2 | **Room rent + proportionate deduction** (the worked example) | room ₹8,000 → ₹4,500 (cap), surgery ₹40,000 → ₹22,500 (ratio 0.625), pharmacy/diagnostics untouched (IRDAI 2024), 10% co-pay → **₹41,400** payable, `partially_approved` |
 | #3 | **Exclusion + dispute** | cosmetic line `denied` (EXCLUDED); a dispute is pre-raised on it — resolve it (overturn) to see re-derivation |
 | #4 | **Waiting period** | maternity within its 730-day wait → `denied` |
 | #5 | **Sum-insured exhaustion** | policy with ₹2,98,000 already consumed → surgery reduced to the ₹2,000 remaining |
@@ -108,13 +110,19 @@ curl -s -X POST localhost:8000/mcp/ \
 
 ## AI collaboration artifacts
 
-Raw agent session logs (`.jsonl`) covering every phase live in `ai-artifacts/`. They were
-copied from the local agent transcript directory:
+Raw agent session logs (`.jsonl`) covering every phase live in `ai-artifacts/`, split by the
+agent that produced them:
+
+- `ai-artifacts/claude/` — Claude Code / Claude Desktop sessions
+- `ai-artifacts/codex/`  — Codex CLI sessions
+
+They were copied verbatim from each agent's local transcript store:
 
 ```bash
-# from the repo root — the project's Codex transcript directory:
-cp ~/.Codex/projects/-Users-adityapeela-Documents-projects-realfast_assignment/*.jsonl ai-artifacts/
+# Claude (the project slug uses hyphens):
+cp ~/.claude/projects/-Users-adityapeela-Documents-projects-realfast-assignment/*.jsonl ai-artifacts/claude/
+# Codex (sessions are stored by date):
+cp ~/.codex/sessions/2026/06/09/rollout-*.jsonl ai-artifacts/codex/
 ```
 
-Re-run that command to refresh the logs after further work. `ai-artifacts/` is intentionally
-**not** gitignored.
+`ai-artifacts/` is intentionally **not** gitignored — the raw logs are a required deliverable.
