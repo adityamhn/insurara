@@ -1,4 +1,4 @@
-# Claims Processing System
+# Claims Processing System - Insurara
 
 A claims-processing system for **Indian health-insurance reimbursement** claims: submit a
 claim with line items → adjudicate each line against frozen policy terms → derive the claim
