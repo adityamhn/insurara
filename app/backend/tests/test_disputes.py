@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 
 def _claims(client, **params):
     return client.get("/api/claims", params=params).json()
@@ -10,6 +12,10 @@ def _claims(client, **params):
 
 def _first(client, status):
     return _claims(client, status=status)[0]
+
+
+def _waterfall_payable(line):
+    return Decimal(line["billed_amount"]) + sum(Decimal(r["amount_delta"]) for r in line["reasons"])
 
 
 # --- Raise ------------------------------------------------------------------- #
@@ -63,7 +69,8 @@ def test_overturn_denied_line_approves_and_rederives(client):
     assert dl["status"] == "approved"
     assert dl["payable_amount"] == billed  # overturn to full when no amount given
     assert detail["status"] == "approved"
-    assert any(r["code"] == "DISPUTE_OVERTURNED" for r in dl["reasons"])
+    assert [r["code"] for r in dl["reasons"]] == ["DISPUTE_OVERTURNED"]
+    assert _waterfall_payable(dl) == Decimal(dl["payable_amount"])
 
 
 def test_overturn_with_corrected_amount_partially_approves(client):
@@ -85,6 +92,9 @@ def test_overturn_with_corrected_amount_partially_approves(client):
     dl = client.get(f"/api/claims/{claim['id']}").json()["line_items"][0]
     assert dl["status"] == "partially_approved"
     assert dl["payable_amount"] == "20000.00"
+    assert [r["code"] for r in dl["reasons"]] == ["DISPUTE_OVERTURNED"]
+    assert dl["reasons"][0]["amount_delta"] == "-30000.00"
+    assert _waterfall_payable(dl) == Decimal(dl["payable_amount"])
 
 
 def test_overturn_amount_above_billed_is_rejected(client):

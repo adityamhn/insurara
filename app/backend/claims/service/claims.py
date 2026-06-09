@@ -337,12 +337,13 @@ def resolve_dispute(
         )
         line.status = transition(line.status, new_status)
         line.payable_amount = payable
+        line.reasons.clear()
         line.reasons.append(
             orm.Reason(
-                ordinal=len(line.reasons),
+                ordinal=0,
                 code=ReasonCode.DISPUTE_OVERTURNED,
                 message=f"Dispute overturned; line set to ₹{payable}. {resolution_text}",
-                amount_delta=ZERO,
+                amount_delta=rupee(payable - billed),
                 step=PipelineStep.NEEDS_REVIEW,
             )
         )
