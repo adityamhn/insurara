@@ -107,22 +107,3 @@ curl -s -X POST localhost:8000/mcp/ \
 ```
 
 ---
-
-## AI collaboration artifacts
-
-Raw agent session logs (`.jsonl`) covering every phase live in `ai-artifacts/`, split by the
-agent that produced them:
-
-- `ai-artifacts/claude/` — Claude Code / Claude Desktop sessions
-- `ai-artifacts/codex/`  — Codex CLI sessions
-
-They were copied verbatim from each agent's local transcript store:
-
-```bash
-# Claude (the project slug uses hyphens):
-cp ~/.claude/projects/-Users-adityapeela-Documents-projects-realfast-assignment/*.jsonl ai-artifacts/claude/
-# Codex (sessions are stored by date):
-cp ~/.codex/sessions/2026/06/09/rollout-*.jsonl ai-artifacts/codex/
-```
-
-`ai-artifacts/` is intentionally **not** gitignored — the raw logs are a required deliverable.
