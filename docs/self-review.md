@@ -1,72 +1,65 @@
 # Self-Review
 
-An honest assessment — what's solid, what's thin, and what I'd do with more time.
+My honest read on what's solid, what's thin, and what I'd do next.
 
-## What's strong
+## What I'm happy with
 
-- **The adjudication engine.** Pure, deterministic, DB-free
-  (`app/backend/claims/engine/`), and the most thoroughly tested part: the worked
-  example (₹64,000 → ₹41,400), one test per pipeline step, proportionate deduction with the
-  IRDAI-2024 exclusions, sum-insured / per-year sub-limit exhaustion, the state-derivation
-  rule, and the money invariant. Tests encode domain rules, not HTTP status codes.
-- **Proportionate deduction** is the most domain-accurate piece: data-driven via the
-  `subject_to_proportionate_deduction` flag (not a hardcoded list), ratio off billed room
-  rent, IRDAI-2024 exclusions for pharmacy/diagnostics/implants.
-- **Explanations as a byproduct.** Every reduction emits an ordered `Reason`; the same data
-  drives the API `/explanation` and the UI reason-waterfall. Nothing is reconstructed.
-- **Snapshot isolation** is real and tested — later policy edits provably don't change past
-  claims.
-- **Lifecycle integrity.** Claim status is always derived from line items; settlement is
-  guarded against pending review and open disputes (can't reach `settled` with unresolved
-  state).
-- **Two independent domain reviews** (fresh-context agent passes) ran against the engine and
-  API; both findings they surfaced as Critical were real and are fixed (see below).
+- **The adjudication engine.** It's a pure, deterministic module with no database or HTTP
+  inside — you pass in a line item, the frozen policy terms, and the usage counters, and you
+  get back a decision plus an ordered list of reasons. That made it easy to test hard: the
+  ₹64,000 → ₹41,400 worked example, one test per pipeline step, and the tricky parts
+  (proportionate deduction, sum-insured exhaustion across claims, the claim-status
+  derivation). The tests check domain behaviour, not HTTP status codes.
+- **Proportionate deduction** is the part I'm most confident is domain-correct. When room
+  rent breaches its cap, the associated charges scale down by the same ratio — but pharmacy,
+  diagnostics, and implants are excluded (IRDAI 2024). That exclusion is a flag on the data,
+  not an `if` buried in the engine, so the rule is easy to change.
+- **Explanations come for free.** Every reduction the engine makes records a reason with its
+  amount. That same list is what the API returns and what the UI renders as the waterfall, so
+  "why is the payable ₹4,500?" is always answerable and never reconstructed after the fact.
+- **Snapshots actually isolate.** A claim is judged against a frozen copy of the policy, so
+  editing the policy later can't change a past claim's outcome. There's a test that proves it.
+- **Claim status is always derived from its line items**, never set by hand, and you can't
+  settle a claim that still has a line under review or an open dispute.
 
-## What's rough / deliberately simplified
+## What's rough or deliberately left out
 
-- **Sequential settlement only (concurrency).** Counters are snapshotted at creation and
-  applied on settlement; two claims opened before either settles both see the same headroom
-  and could together over-consume the Sum Insured. This is a deliberate simplification. A
-  production fix needs row-level locks or a settlement-time `consumed + payable ≤ sum_insured`
-  re-check (returning 409). Documented in `service/snapshot.py`.
-- **The proportionate-vs-sum-insured ordering.** There are two defensible orderings for where
-  the sum-insured ceiling sits relative to proportionate deduction. I scale associated charges
-  first and apply the SI ceiling last (SI is the overall pool cap); a reviewer could reasonably
-  want the other order. It only matters when a room-rent breach and SI exhaustion collide in
-  one claim — untested in combination beyond reasoning.
-- **Needs-review is a flat threshold**, not real triage/ML. It's a stand-in for the
-  auto-vs-human split; one realistic trigger, plan-configurable.
-- **Auth, encryption, RBAC: not built** (out of scope). Sensitive fields are tagged in the
-  schema with the intended controls described, not enforced.
-- **No frontend automated tests.** The UI was verified by clicking through the running app
-  (browser agent + screenshots of the waterfall) and by `npm run build` + lint, but there
-  are no Playwright/RTL tests. The backend is where the test value lives.
-- **N+1 in the claims list.** `claim_summary_out` lazy-loads `policy`/`member` per row; fine
-  for the demo's data volume, but would need `selectinload` at scale. No pagination either.
-- **Deductible ordering across lines** is "first lines until exhausted" — correct in total,
-  but which specific line absorbs it is order-dependent; acceptable since the claim total is
-  what matters.
-- **Single currency / locale** (INR), and `service_days` is a simple multiplier for per-day
-  sub-limits (no date-range modelling of a hospital stay).
+- **Settlement assumes one claim at a time.** Usage counters are frozen when a claim is
+  created and only applied when it's settled. If you open two claims before settling either,
+  both see the same headroom and could together overspend the sum insured. Doing it properly
+  needs row locking or a re-check at settlement time; I left it as a documented simplification.
+- **One ordering choice is genuinely debatable.** Where the overall sum-insured cap sits
+  relative to proportionate deduction has two reasonable answers. I scale the associated
+  charges first and apply the sum-insured ceiling last; someone could argue the reverse. It
+  only matters when a room-rent breach and an exhausted sum insured land in the same claim,
+  which I haven't tested in combination.
+- **"Needs review" is just a rupee threshold**, not real fraud/triage logic — a stand-in for
+  the auto-decide-vs-send-to-a-human split.
+- **No auth, encryption, or access control.** The sensitive fields (member name, diagnosis,
+  provider) are tagged in the schema with a note on how they'd be protected in production, but
+  nothing is enforced — out of scope here.
+- **No automated frontend tests.** I checked the UI by clicking through the running app and
+  by the build/lint passing; the real test value is in the backend.
+- **The claims list does an extra query per row** (member/policy lookups) and there's no
+  pagination — fine for a seeded demo, not for real volume.
 
-## Bugs found and fixed during the build (honesty about the process)
+## Bugs I hit while building (and fixed)
 
-- **Overpayment hole (Critical, B4 in decisions).** Needs-review originally ran before the
-  sub-limit cap, so an adjuster could approve a high-value line above its cap. Fixed: review
-  runs last; the adjuster is bounded by the engine's computed amount. Regression-tested.
-- **Reasons orphaned on insert.** Reasons were first created with `line_item_id=row.id`
-  before the row was flushed (id still `None`); switched to appending via the relationship.
-- **Money default as string `"0"`** broke arithmetic on freshly-created policies; changed
-  the column defaults to `Decimal`.
-- **Per-year sub-limit bucket over-debited** when the SI check later reduced a line; now
-  debits both balances by the final payable.
-- **Settling claims with open disputes** was possible; now blocked (409) in the API.
-- **New-claim service date** could submit the policy's default start date instead of the
-  entered value; the form now reads the named field as the source of truth.
+- **The big one:** at first a high-value line was sent to manual review *before* its sub-limit
+  cap was applied, and the reviewer could then approve the full billed amount — so room rent
+  billed at ₹1,50,000 could be paid against a ₹5,000 cap. I moved the review step to run after
+  all the automatic reductions, so a reviewer can only confirm or lower the rules-allowed
+  amount, never exceed it. Added a regression test.
+- A few smaller ones, each now covered by a test: reasons were briefly saved without their
+  parent line item (the foreign key was set before the row was flushed); money columns
+  defaulted to the string `"0"` and broke arithmetic on brand-new policies; a per-year
+  sub-limit bucket was debited by the pre-cap amount; and a claim with an open dispute could
+  still be settled.
 
-## What I'd do next with more time
-1. Settlement-time limit re-check + optimistic locking for true concurrency safety.
-2. A few API tests for the proportionate-vs-sum-insured ordering edge (breach + exhaustion together).
-3. Eager-loading + pagination on the claims list.
-4. A small Playwright suite for the three core UI flows.
-5. Resolve the ordering ambiguity with the assignment authors rather than choosing.
+## What I'd do with more time
+
+1. Real concurrency safety at settlement (locking + a sum-insured re-check).
+2. A test for the breach-plus-exhaustion ordering edge.
+3. Eager-loading and pagination on the claims list.
+4. A small end-to-end test for the main UI flows.
+5. Settle the ordering question with whoever owns the rules, rather than picking for them.

@@ -51,14 +51,14 @@ Code: pure domain DTOs in `app/backend/claims/domain/models.py`; ORM tables in
 `coverage_types`, `policies`, `policy_members`, `members`, `policy_snapshots`, `claims`,
 `line_items`, `reasons`, `decision_logs`, `disputes`.
 
-### Sensitive data (documented, not enforced — Decision 10)
+### Sensitive data (documented, not enforced)
 `members.name`, `line_items.diagnosis_code`, `line_items.provider_name` are tagged
 `# SENSITIVE: encrypt + reader-role ACL` in the ORM. In production these would be
 column-encrypted and gated behind a reader-role ACL; auth/encryption are out of scope here.
 
 ---
 
-## 2. Coverage rules as data (the decision table — Decision 2)
+## 2. Coverage rules as data (the decision table)
 
 Rules are **data evaluated by an engine**, not hardcoded `if/else` and not a full DSL. Two
 layers:
@@ -72,12 +72,10 @@ layers:
    starts at `billed_amount` and is threaded through; any step may short-circuit to a
    terminal decision, and every step that changes the outcome appends a `Reason`.
 
-To add a rule you add a row or a step — you never edit a tangle of conditionals. This is
-the ServiceNow decision-table pattern (`ServiceNowDocs/.../update-insurance-claims-automation-using-decision-tables.md`),
-simplified to one line of business.
+To add a rule you add a row or a step — you never edit a tangle of conditionals.
 
 The accumulated `Reason[]` per line item **is** the Explanation of Benefits — explanations
-are a byproduct of how adjudication runs, not bolted on (Decision 6).
+are a byproduct of how adjudication runs, not bolted on afterwards.
 
 ---
 
@@ -124,7 +122,7 @@ re-derives to `partially_approved / decided`. (Seeded as scenario 6.)
 
 ---
 
-## 4. Policy snapshots (Decision 7)
+## 4. Policy snapshots
 
 At claim creation, the policy terms + usage counters are frozen into a `PolicySnapshot`
 (stored as pydantic JSON text so Decimals round-trip exactly —
@@ -138,7 +136,9 @@ Live counters on `policies`: `sum_insured_consumed`, `deductible_consumed`, and 
 `sub_limit_consumed` JSON map (per-year sub-limits only). Incremented **on settlement**,
 not on adjudication. Because adjudication reads the snapshot taken at creation, the demo
 settles sequentially (documented simplification — see self-review). This is what makes
-claim #3 aware that claims #1 and #2 already consumed part of the Sum Insured.
+the exhaustion scenario aware that prior settled claims already consumed most of the Sum
+Insured. In the seed data, claim #5 demonstrates this with a policy that has only ₹2,000
+remaining.
 
 ## 6. Money
 

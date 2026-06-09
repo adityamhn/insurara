@@ -1,5 +1,5 @@
 """Freeze a live policy into the immutable terms the engine adjudicates against
-(Decision 7). Built at claim creation; later edits to the policy/plan never reach a
+. Built at claim creation; later edits to the policy/plan never reach a
 past claim because adjudication only ever reads the snapshot.
 """
 
@@ -56,7 +56,7 @@ def persist_snapshot(
     """Build the frozen DTOs, store them as exact pydantic JSON, and return both the
     ORM row and the DTOs (so the caller can adjudicate without re-reading).
 
-    SEQUENTIAL ASSUMPTION (SPEC §3.3, deliberate simplification): usage counters are
+    SEQUENTIAL ASSUMPTION: usage counters are
     snapshotted at creation and only advance on settlement, so two claims created
     against the same policy before either settles both see the same headroom and could
     together over-consume the sum insured. The demo settles claims sequentially;

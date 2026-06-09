@@ -1,6 +1,6 @@
 """Pure domain DTOs — no DB, no HTTP. These are what the adjudication engine reads
-and returns. Persistence (milestone 2) maps these to/from ORM rows; the engine never
-sees the ORM (SPEC §4: pure & DB-free).
+and returns. Persistence maps these to/from ORM rows; the engine never
+sees the ORM.
 
 Money fields are Decimal. The engine quantizes to 2dp via `domain.money`; inputs are
 accepted as Decimal/int/str (floats are refused at the money boundary).
@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from .enums import (
     ClaimStage,
@@ -25,8 +25,8 @@ from .enums import (
 
 
 class CoverageTypeRule(BaseModel):
-    """One category of covered expense and its rules (SPEC §3.2). This is the
-    decision-table row — the configurable per-category `what` (Decision 2)."""
+    """One category of covered expense and its rules. This is the
+    decision-table row — the configurable per-category `what`."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -42,7 +42,7 @@ class CoverageTypeRule(BaseModel):
 
 
 class PolicySnapshot(BaseModel):
-    """Frozen policy terms the engine adjudicates against (Decision 7). Captured at
+    """Frozen policy terms the engine adjudicates against. Captured at
     claim creation so later policy edits never change a past claim. Usage counters
     are passed separately (they change on settlement, not at adjudication)."""
 
@@ -55,25 +55,25 @@ class PolicySnapshot(BaseModel):
     copay_percent: Decimal = Decimal("0")
     # Coverage rules keyed by code for O(1) lookup during the coverage check.
     coverage_types: dict[str, CoverageTypeRule]
-    # Auto-vs-human split (Decision 9): line items billed above this route to review.
+    # Auto-vs-human split: line items billed above this route to review.
     high_value_review_threshold: Decimal = Decimal("100000")
 
 
 class UsageCounters(BaseModel):
-    """Running consumption for a policy-year (SPEC §3.3). Snapshotted at claim
+    """Running consumption for a policy-year. Snapshotted at claim
     creation, incremented on settlement. The engine treats these as read-only."""
 
     sum_insured_consumed: Decimal = Decimal("0")
     deductible_consumed: Decimal = Decimal("0")
     # Per-coverage-type consumed, keyed by coverage_type_code (for per_year sub-limits).
-    sub_limit_consumed: dict[str, Decimal] = {}
+    sub_limit_consumed: dict[str, Decimal] = Field(default_factory=dict)
 
 
 class LineItemInput(BaseModel):
-    """A single billed expense submitted on a claim (SPEC §5.2)."""
+    """A single billed expense submitted on a claim."""
 
     # Caller-supplied stable handle so results can be matched back (line ordinal in
-    # practice). Sensitive fields are carried but not protected (Decision 10).
+    # practice). Sensitive fields are carried but not protected.
     ref: str
     coverage_type_code: str
     billed_amount: Decimal
@@ -84,7 +84,7 @@ class LineItemInput(BaseModel):
 
 
 class Reason(BaseModel):
-    """A structured explanation fragment emitted by a pipeline step (Decision 6).
+    """A structured explanation fragment emitted by a pipeline step.
     The ordered list of Reasons per line item *is* the EOB / deduction waterfall."""
 
     code: ReasonCode
@@ -101,7 +101,7 @@ class LineItemResult(BaseModel):
     billed_amount: Decimal
     payable_amount: Decimal
     status: LineItemStatus
-    reasons: list[Reason] = []
+    reasons: list[Reason] = Field(default_factory=list)
 
     @property
     def member_share(self) -> Decimal:
@@ -116,7 +116,7 @@ class ClaimTotals(BaseModel):
 
 class ClaimResult(BaseModel):
     """Outcome of adjudicating a whole claim: per-line results plus the derived
-    claim stage/status (SPEC §3.4) and rolled-up totals."""
+    claim stage/status and rolled-up totals."""
 
     line_items: list[LineItemResult]
     status: ClaimStatus

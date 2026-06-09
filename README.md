@@ -36,7 +36,8 @@ health at `/health`. Re-run `./setup.sh` (or `cd app/backend && uv run python -m
 any time to reset the demo data.
 
 Env defaults — override only if needed: `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`,
-`CLAIMS_DB_URL` (a SQLite file at `app/backend/claims.db`).
+`CLAIMS_DB_URL` (a SQLite file at `app/backend/claims.db`), and
+`CLAIMS_ALLOWED_ORIGINS` (comma-separated browser origins for local UI ports).
 
 <details>
 <summary>Manual setup, without the scripts</summary>
@@ -61,15 +62,15 @@ not just HTTP status codes. Frontend checks: `cd app/frontend && npm run lint &&
 
 ---
 
-## Walking the demo (the 8 seeded scenarios)
+## Walking the demo (7 seeded claims + settlement flow)
 
-Open http://localhost:3000 — the claims list shows all eight. Each tells one part of the
-story:
+Open http://localhost:3000 — the claims list shows seven seeded claims. Each tells one
+part of the story; settlement is a flow you can run on any decided claim.
 
 | Claim | Scenario | What it shows |
 |------:|----------|---------------|
 | #1 | **Clean approval** | small claim within limits, no co-pay → `approved`, no deductions |
-| #2 | **Room rent + proportionate deduction** (the worked example) | room ₹8,000 → ₹4,500 (cap), surgery ₹40,000 → ₹22,500 (ratio 0.625), pharmacy/diagnostics untouched (IRDAI 2024), 10% co-pay → **₹41,400** payable, `partially_approved` |
+| #2 | **Room rent + proportionate deduction** (the worked example) | room ₹8,000 → ₹5,000 cap → ₹4,500 after co-pay; surgery ₹40,000 → ₹25,000 by ratio 0.625 → ₹22,500 after co-pay; pharmacy/diagnostics untouched by proportionate deduction; total **₹41,400** payable, `partially_approved` |
 | #3 | **Exclusion + dispute** | cosmetic line `denied` (EXCLUDED); a dispute is pre-raised on it — resolve it (overturn) to see re-derivation |
 | #4 | **Waiting period** | maternity within its 730-day wait → `denied` |
 | #5 | **Sum-insured exhaustion** | policy with ₹2,98,000 already consumed → surgery reduced to the ₹2,000 remaining |

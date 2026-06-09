@@ -1,8 +1,8 @@
-"""Pydantic request/response schemas for the REST API (SPEC §5).
+"""Pydantic request/response schemas for the REST API.
 
 Kept separate from the domain DTOs and the ORM so the wire contract can evolve
 independently. Money is serialized as exact 2dp decimal strings (pydantic renders
-Decimal as a string), per the §5.5 "pick one and be consistent" rule.
+Decimal as a string) — one consistent money representation across the API.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ class PlanOut(BaseModel):
 
 class MemberOut(BaseModel):
     id: int
-    name: str  # SENSITIVE (Decision 10) — surfaced for the demo, flagged in meta
+    name: str  # SENSITIVE — surfaced for the demo, flagged in meta
     dob: date
 
 

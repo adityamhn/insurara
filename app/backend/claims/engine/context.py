@@ -1,7 +1,7 @@
 """Working state threaded through the adjudication pipeline.
 
 `AdjudicationContext` holds everything one line item needs — all passed in, nothing
-fetched (SPEC §4: pure & DB-free). The running `payable` starts at `billed_amount` and
+fetched. The running `payable` starts at `billed_amount` and
 is reduced by each step. `StepResult` is what a per-line step returns: the (possibly
 reduced) payable, any Reasons it emitted, and an optional terminal decision that
 short-circuits the rest of the pipeline.

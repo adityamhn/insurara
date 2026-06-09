@@ -1,4 +1,4 @@
-"""Claims: submit (adjudicate on submit), list, detail, and the EOB explanation (SPEC §5.2)."""
+"""Claims: submit (adjudicate on submit), list, detail, and the EOB explanation."""
 
 from __future__ import annotations
 

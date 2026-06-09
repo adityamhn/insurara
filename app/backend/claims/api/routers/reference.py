@@ -1,4 +1,4 @@
-"""Read-only reference data: plans, policies (with usage), members (SPEC §5.1)."""
+"""Read-only reference data: plans, policies (with usage), members."""
 
 from __future__ import annotations
 

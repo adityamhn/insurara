@@ -1,4 +1,4 @@
-"""Claim-level orchestration (SPEC §4.3).
+"""Claim-level orchestration.
 
 `adjudicate_claim` is the engine's public entry point: given a frozen policy snapshot,
 the line items, the usage counters, and the service date, it returns a fully decided
@@ -6,13 +6,14 @@ the line items, the usage counters, and the service date, it returns a fully dec
 totals. Pure and DB-free.
 
 Pass order (honours §4.2's sequence while respecting that some steps are cross-line, §4.3):
-  A. per-line   : coverage → waiting → needs-review → sub-limit cap   (short-circuit on terminal)
+  A. per-line   : coverage → waiting → sub-limit cap   (short-circuit on terminal)
   B. claim-level: proportionate deduction
   C. claim-level: sum-insured / per-year sub-limit balance  (threads in-claim consumption)
   D. claim-level: deductible (applied once across the claim)
   E. per-line   : co-payment
-  F. per-line   : finalize (status from payable vs billed)
-  G. claim-level: derive claim status + stage from line states (§3.4)
+  F. per-line   : needs-review, after reductions (adjuster sees the rules-allowed ceiling)
+  G. per-line   : finalize (status from payable vs billed)
+  H. claim-level: derive claim status + stage from line states
 """
 
 from __future__ import annotations
@@ -50,7 +51,7 @@ from .steps import (
 
 # Per-line steps run in order until one short-circuits to a terminal status (Pass A).
 # Needs-review is deliberately NOT here — it runs last (after every reduction) so the
-# adjuster sees the fully-computed, rules-capped payable (SPEC §4.2 step 8).
+# adjuster sees the fully-computed, rules-capped payable.
 _PER_LINE_STEPS = (
     step_coverage,
     step_waiting_period,
@@ -176,7 +177,7 @@ def _proportionate_pass(contexts: list[AdjudicationContext]) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Pass C — sum-insured / per-year sub-limit balance (§4.2 step 5)
+# Pass C — sum-insured / per-year sub-limit balance
 # --------------------------------------------------------------------------- #
 def _annual_cap(ctx: AdjudicationContext) -> Decimal:
     """The per-year sub-limit value in rupees (no per-day multiplier)."""
@@ -195,7 +196,7 @@ def _balance_pass(
     """Reduce each line to the remaining per-year sub-limit and remaining sum insured,
     threading consumption *within this claim* so a claim can't exceed a limit by
     splitting it across lines. Exhaustion → DENIED. Order per line: per-year sub-limit
-    first, then sum insured (§4.2)."""
+    first, then sum insured."""
     remaining_si = snapshot.sum_insured - usage.sum_insured_consumed
     remaining_sub: dict[str, Decimal] = {}
 
@@ -281,7 +282,7 @@ def _deny_exhausted(
 
 
 # --------------------------------------------------------------------------- #
-# Pass D — deductible, applied once across the claim (§4.3)
+# Pass D — deductible, applied once across the claim
 # --------------------------------------------------------------------------- #
 def _deductible_pass(
     contexts: list[AdjudicationContext],

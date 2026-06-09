@@ -1,17 +1,17 @@
-"""The two state machines (SPEC §3.4), as explicit transition tables + a derivation
+"""The two state machines, as explicit transition tables + a derivation
 function. Status is changed only through here — never by assigning strings ad hoc.
 
 - Line items have their own machine.
 - A claim's `status` is DERIVED from its line items (not set directly); its `stage`
   follows from the same derivation. This derivation is the answer to the
-  "3 covered, 1 denied, 1 needs review" problem and is implemented verbatim from §3.4.
+  "3 covered, 1 denied, 1 needs review" problem.
 """
 
 from __future__ import annotations
 
 from .enums import ClaimStage, ClaimStatus, LineItemStatus
 
-# Allowed line-item transitions (SPEC §3.4). A target absent from a state's set is
+# Allowed line-item transitions. A target absent from a state's set is
 # illegal. `paid` is terminal. `disputed` re-opens to a covered decision on overturn;
 # an "upheld" dispute restores the prior decision, which the caller persists and
 # replays rather than encoding as a generic edge.
@@ -58,7 +58,7 @@ _ADJUDICATED = frozenset(
 
 
 class IllegalTransition(Exception):
-    """Raised when a line-item state change violates the machine (SPEC §3.4)."""
+    """Raised when a line-item state change violates the machine."""
 
 
 def can_transition(current: LineItemStatus, target: LineItemStatus) -> bool:
@@ -75,7 +75,7 @@ def transition(current: LineItemStatus, target: LineItemStatus) -> LineItemStatu
 def derive_claim_state(
     line_statuses: list[LineItemStatus],
 ) -> tuple[ClaimStatus, ClaimStage]:
-    """Derive (status, stage) from line-item states — SPEC §3.4, exact rule.
+    """Derive (status, stage) from line-item states — the exact rule:
 
         if any under_review   -> needs_review, under_adjudication
         elif all denied       -> denied,       decided

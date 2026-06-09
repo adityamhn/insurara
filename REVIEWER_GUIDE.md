@@ -70,6 +70,8 @@ and reasons — there is no second adjudication path.
 
 ## 4. Example questions to ask your agent
 
+Demo and verification:
+
 - "Use the claims-reviewer MCP: what does claim #2 show, and why is the payable ₹41,400?"
 - "Pull the explanation (EOB) for claim #2 and walk me through each deduction."
 - "Reset the demo data, then submit a claim for policy 1 / member 1 on 2024-06-01 with a
@@ -78,6 +80,15 @@ and reasons — there is no second adjudication path.
   become?"
 - "Show policy 2's usage — how much sum insured remains?"
 - "Search the assignment docs for how proportionate deduction works and cite the source."
+
+Design and thought process:
+
+- "Why are coverage rules stored as data rows while the pipeline remains fixed code?"
+- "Why is claim status derived from line items instead of written directly?"
+- "How do policy snapshots protect old claims from later policy edits?"
+- "Why does needs-review run after automatic reductions, not before them?"
+- "What production gap would you close first: settlement concurrency, auth/encryption, or
+  frontend E2E tests, and why?"
 - "From the decisions doc, why was needs-review moved to run last in the pipeline?"
 
 ## 5. Notes

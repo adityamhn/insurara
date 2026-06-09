@@ -1,4 +1,4 @@
-"""FastAPI application factory (SPEC §5, §12).
+"""FastAPI application factory.
 
 `create_app()` builds the default SQLite-backed app; tests pass a seeded session
 factory to run against a temp database. CORS is open for the local Next.js dev server.
@@ -7,6 +7,7 @@ factory to run against a temp database. CORS is open for the local Next.js dev s
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,23 @@ from ..mcp.reviewer import create_reviewer_mcp
 from ..persistence.db import init_db, make_engine, make_session_factory
 from .errors import register_error_handlers
 from .routers import claims, disputes, reference
+
+
+def _allowed_origins() -> list[str]:
+    """Local reviewer origins allowed to call the API from a browser.
+
+    CLAIMS_ALLOWED_ORIGINS can override this with a comma-separated list when the
+    UI is served from a different local port.
+    """
+    configured = os.environ.get("CLAIMS_ALLOWED_ORIGINS")
+    if configured:
+        return [origin.strip() for origin in configured.split(",") if origin.strip()]
+    return [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ]
 
 
 def create_app(session_factory: sessionmaker[Session] | None = None) -> FastAPI:
@@ -40,7 +58,7 @@ def create_app(session_factory: sessionmaker[Session] | None = None) -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],
+        allow_origins=_allowed_origins(),
         allow_methods=["*"],
         allow_headers=["*"],
     )

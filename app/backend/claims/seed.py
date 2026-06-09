@@ -1,4 +1,4 @@
-"""Seed the SPEC §9 scenarios so every interesting behaviour is demoable on a fresh DB.
+"""Seed the demo scenarios so every interesting behaviour is demoable on a fresh DB.
 
 Run as a script (`python -m claims.seed`) to (re)create the default SQLite DB, or call
 `seed(session)` from tests. Returns the created scenario claims keyed by name so tests
@@ -104,7 +104,7 @@ def seed(session) -> dict[str, orm.Claim]:
         ],
     )
     # Near-exhausted policy: ₹2,98,000 of ₹3,00,000 already consumed (simulating prior
-    # settled claims; settlement-driven counters arrive in milestone 4).
+    # settled claims; usage counters advance when a claim is settled).
     policy_b = orm.Policy(
         policy_number="AS3L-EXHAUST-0002",
         plan_id=plan_basic.id,
@@ -134,7 +134,7 @@ def seed(session) -> dict[str, orm.Claim]:
         line_items=[_line("daycare", "8000"), _line("consultation", "2000")],
     )
 
-    # 2. Room-rent + proportionate deduction (the §4.4 worked example) -> ₹41,400.
+    # 2. Room-rent + proportionate deduction (the worked example) -> ₹41,400.
     claims["proportionate"] = create_claim(
         session,
         policy_id=policy_a.id,

@@ -1,4 +1,4 @@
-"""Dispute resolution (SPEC §5.4). Resolving lives under /api/disputes because it acts
+"""Dispute resolution. Resolving lives under /api/disputes because it acts
 on a dispute id, not a claim; raising/listing disputes is on the claims router."""
 
 from __future__ import annotations

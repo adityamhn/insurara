@@ -1,7 +1,7 @@
 """Claim orchestration: submit → snapshot → adjudicate → persist → derive.
 
-This service is the seam both the seed script and the FastAPI layer (milestone 3) call.
-It wires the pure engine (milestone 1) to persistence (milestone 2): it never puts
+This service is the seam both the seed script and the FastAPI layer call.
+It wires the pure engine to persistence: it never puts
 business rules here — derivation and amounts come from the engine, this just persists
 them and records the activity stream.
 """
@@ -137,7 +137,7 @@ def resolve_review(
     note: str | None = None,
 ) -> orm.Claim:
     """Human adjuster resolves an under_review line item, then the claim re-derives
-    (SPEC §5.3). This is the back half of the "3 covered, 1 denied, 1 needs review"
+. This is the back half of the "3 covered, 1 denied, 1 needs review"
     loop: once the review is resolved the claim drops out of needs_review."""
     line = next((li for li in claim.line_items if li.id == line_item_id), None)
     if line is None:
@@ -192,7 +192,7 @@ def resolve_review(
 
 def settle_claim(session, claim: orm.Claim) -> orm.Claim:
     """Pay out approved/partially-approved line items and increment the policy's live
-    usage counters (SPEC §3.3, §5.3). Counters move on settlement, not adjudication.
+    usage counters. Counters move on settlement, not adjudication.
     Guard: cannot settle while any line item is under review or dispute is open (→ 409)."""
     if claim.stage is ClaimStage.SETTLED:
         raise ClaimConflict(f"claim {claim.id} is already settled")
@@ -260,9 +260,9 @@ def raise_dispute(
     line_item_id: int | None,
     reason_text: str,
 ) -> orm.Dispute:
-    """Member contests a decision (SPEC §5.4). A line-level dispute moves the line to
+    """Member contests a decision. A line-level dispute moves the line to
     `disputed` (remembering its prior decision) and re-opens the claim. Disputes are
-    handled before settlement here — a paid line has no `disputed` edge (SPEC §3.4) and
+    handled before settlement here — a paid line has no `disputed` edge and
     a settled claim is closed to disputes (documented simplification)."""
     if claim.stage in (ClaimStage.SETTLED, ClaimStage.CLOSED):
         raise ClaimConflict(f"claim {claim.id} is {claim.stage.value}; disputes are closed")
@@ -308,7 +308,7 @@ def resolve_dispute(
     resolution_text: str,
     new_payable_amount: Decimal | None = None,
 ) -> orm.Dispute:
-    """Resolve a dispute (SPEC §5.4). `upheld` restores the original decision;
+    """Resolve a dispute. `upheld` restores the original decision;
     `overturned` moves the line to a covered decision (optionally at a corrected
     amount). The claim then re-derives from its line items."""
     if dispute.state in (DisputeState.UPHELD, DisputeState.OVERTURNED):
@@ -368,7 +368,7 @@ def resolve_dispute(
 
 def readjudicate_claim(session, claim: orm.Claim) -> orm.Claim:
     """Re-run the engine against the claim's frozen snapshot and overwrite the stored
-    results (SPEC §5.3). Deterministic: it reproduces the original automatic decision,
+    results. Deterministic: it reproduces the original automatic decision,
     discarding any manual review/dispute overrides — a clean reset for the demo. Not
     allowed once settled."""
     if claim.stage in (ClaimStage.SETTLED, ClaimStage.CLOSED):

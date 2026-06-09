@@ -1,11 +1,11 @@
-"""ORM models — the tables of SPEC §6.2.
+"""ORM models — the database tables.
 
 The engine never sees these (it works on the pure DTOs in `domain.models`); the service
 layer maps between them. Money columns use the `Money` TEXT type for exact Decimals.
 Status columns store the domain enums as validated strings (no native DB enum, so the
 schema stays portable across SQLite/Postgres).
 
-SENSITIVE fields (Decision 10) are tagged in comments: in production these would be
+SENSITIVE fields are tagged in comments: in production these would be
 column-encrypted and gated behind a reader-role ACL. We document the intent, not enforce
 it (auth/encryption are out of scope).
 """
@@ -61,7 +61,7 @@ class CoveragePlan(Base):
     sum_insured: Mapped[Money] = mapped_column(Money)
     deductible: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
     copay_percent: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
-    # Auto-vs-human split (Decision 9): line items billed above this route to review.
+    # Auto-vs-human split: line items billed above this route to review.
     high_value_review_threshold: Mapped[Money] = mapped_column(Money, default=Decimal("100000"))
 
     coverage_types: Mapped[list[CoverageType]] = relationship(
@@ -71,7 +71,7 @@ class CoveragePlan(Base):
 
 
 class CoverageType(Base):
-    """One coverage category and its rules — the decision-table row (Decision 2)."""
+    """One coverage category and its rules — the decision-table row."""
 
     __tablename__ = "coverage_types"
 
@@ -114,7 +114,7 @@ class Policy(Base):
     end_date: Mapped[date] = mapped_column()
     status: Mapped[str] = mapped_column(String(20), default="in_force")
 
-    # Live usage counters (SPEC §3.3), incremented on settlement (milestone 4).
+    # Live usage counters, incremented on settlement.
     sum_insured_consumed: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
     deductible_consumed: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
     # Per-coverage-type consumed, keyed by code; Decimal values stored as strings.
@@ -128,7 +128,7 @@ class Policy(Base):
 
 
 class PolicyMember(Base):
-    """Member ↔ Policy with a role; multiple rows = family floater (Decision 11)."""
+    """Member ↔ Policy with a role; multiple rows = family floater."""
 
     __tablename__ = "policy_members"
 
@@ -142,7 +142,7 @@ class PolicyMember(Base):
 
 
 class PolicySnapshot(Base):
-    """Frozen policy terms + usage counters at claim creation (Decision 7). Stored as
+    """Frozen policy terms + usage counters at claim creation. Stored as
     pydantic JSON text so it round-trips Decimals exactly and is immune to later policy
     edits. The claim FK-references this; the engine reads from here, never the live plan."""
 
@@ -209,7 +209,7 @@ class LineItem(Base):
 
 
 class Reason(Base):
-    """A structured explanation fragment (Decision 6); ordered to render the waterfall."""
+    """A structured explanation fragment; ordered to render the waterfall."""
 
     __tablename__ = "reasons"
 
@@ -226,7 +226,7 @@ class Reason(Base):
 
 
 class DecisionLog(Base):
-    """Append-only claim-level activity stream (Decision 6)."""
+    """Append-only claim-level activity stream."""
 
     __tablename__ = "decision_logs"
 

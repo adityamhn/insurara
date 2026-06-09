@@ -1,12 +1,12 @@
-"""The per-line pipeline steps (SPEC §4.2), each a pure function `step(ctx) -> StepResult`.
+"""The per-line pipeline steps, each a pure function `step(ctx) -> StepResult`.
 
 Steps run in the order the orchestrator calls them; `payable` starts at `billed_amount`
 and is threaded through. A step may short-circuit by returning a `terminal_status`
 (e.g. exclusion → DENIED). Each step that changes the outcome emits a Reason — those
-Reasons accumulate into the EOB (Decision 6).
+Reasons accumulate into the EOB.
 
 Cross-line steps (proportionate deduction, deductible, sum-insured/sub-limit balance)
-are NOT here — they live in `pipeline.py` because they need the whole claim (SPEC §4.3).
+are NOT here — they live in `pipeline.py` because they need the whole claim.
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ def step_waiting_period(ctx: AdjudicationContext) -> StepResult:
 
 
 def step_needs_review(ctx: AdjudicationContext) -> StepResult:
-    """Step 8 (SPEC §4.2). Auto-vs-human split (Decision 9): a line billed above the
+    """Step 8. Auto-vs-human split: a line billed above the
     high-value threshold can't be auto-decided → route to UNDER_REVIEW.
 
     Runs LAST, after every automatic reduction, so the line carries its fully-computed
@@ -127,7 +127,7 @@ def _sub_limit_cap(ctx: AdjudicationContext) -> Decimal | None:
 def step_sub_limit_cap(ctx: AdjudicationContext) -> StepResult:
     """3. Sub-limit cap. If payable exceeds the per-category cap, cap it, record the
     excess, and flag the line as breached. A room_rent breach also carries the ratio
-    that drives the claim-level proportionate-deduction pass (§4.3)."""
+    that drives the claim-level proportionate-deduction pass."""
     cap = _sub_limit_cap(ctx)
     if cap is None or ctx.payable <= cap:
         return StepResult(payable=ctx.payable)

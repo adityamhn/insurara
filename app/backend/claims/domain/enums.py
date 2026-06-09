@@ -1,12 +1,12 @@
 """Domain enums. Status is only ever represented by these — never bare strings
-(SPEC §3.4). String-valued so they serialize cleanly to JSON/DB later.
+. String-valued so they serialize cleanly to JSON/DB later.
 """
 
 from enum import Enum
 
 
 class LineItemStatus(str, Enum):
-    """The state machine of the unit that actually gets adjudicated (SPEC §3.4)."""
+    """The state machine of the unit that actually gets adjudicated."""
 
     SUBMITTED = "submitted"
     UNDER_REVIEW = "under_review"
@@ -18,7 +18,7 @@ class LineItemStatus(str, Enum):
 
 
 class ClaimStage(str, Enum):
-    """Coarse lifecycle position of a claim (SPEC §3.4, first axis)."""
+    """Coarse lifecycle position of a claim."""
 
     SUBMITTED = "submitted"
     UNDER_ADJUDICATION = "under_adjudication"
@@ -28,7 +28,7 @@ class ClaimStage(str, Enum):
 
 
 class ClaimStatus(str, Enum):
-    """Claim decision outcome, DERIVED from line items (SPEC §3.4, second axis)."""
+    """Claim decision outcome, DERIVED from line items."""
 
     APPROVED = "approved"
     PARTIALLY_APPROVED = "partially_approved"
@@ -37,8 +37,7 @@ class ClaimStatus(str, Enum):
 
 
 class DisputeState(str, Enum):
-    """Dispute lifecycle (SPEC §3.2). Used by milestone 5; defined here so the
-    domain vocabulary lives in one place."""
+    """Dispute lifecycle. Defined here so the domain vocabulary lives in one place."""
 
     RAISED = "raised"
     UNDER_REVIEW = "under_review"
@@ -47,7 +46,7 @@ class DisputeState(str, Enum):
 
 
 class SubLimitType(str, Enum):
-    """How a coverage type's per-category cap is expressed (SPEC §3.2)."""
+    """How a coverage type's per-category cap is expressed."""
 
     NONE = "none"
     ABSOLUTE = "absolute"
@@ -55,7 +54,7 @@ class SubLimitType(str, Enum):
 
 
 class SubLimitBasis(str, Enum):
-    """The period a sub-limit applies over (SPEC §3.2)."""
+    """The period a sub-limit applies over."""
 
     PER_DAY = "per_day"
     PER_CLAIM = "per_claim"
@@ -64,7 +63,7 @@ class SubLimitBasis(str, Enum):
 
 class ReasonCode(str, Enum):
     """Machine codes for every pipeline step that can change an outcome.
-    The accumulated Reasons are the EOB (SPEC Decision 6)."""
+    The accumulated Reasons are the EOB."""
 
     EXCLUDED = "EXCLUDED"
     WAITING_PERIOD = "WAITING_PERIOD"
@@ -80,7 +79,7 @@ class ReasonCode(str, Enum):
 
 
 class PipelineStep(str, Enum):
-    """Which pipeline stage emitted a Reason (SPEC §4.2). Lets the UI group the
+    """Which pipeline stage emitted a Reason. Lets the UI group the
     waterfall and order reasons stably."""
 
     COVERAGE = "coverage"
