@@ -13,6 +13,7 @@ it (auth/encryption are out of scope).
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import (
     JSON,
@@ -58,10 +59,10 @@ class CoveragePlan(Base):
     name: Mapped[str] = mapped_column(String(120), unique=True)
     description: Mapped[str | None] = mapped_column(Text, default=None)
     sum_insured: Mapped[Money] = mapped_column(Money)
-    deductible: Mapped[Money] = mapped_column(Money, default="0")
-    copay_percent: Mapped[Money] = mapped_column(Money, default="0")
+    deductible: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
+    copay_percent: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
     # Auto-vs-human split (Decision 9): line items billed above this route to review.
-    high_value_review_threshold: Mapped[Money] = mapped_column(Money, default="100000")
+    high_value_review_threshold: Mapped[Money] = mapped_column(Money, default=Decimal("100000"))
 
     coverage_types: Mapped[list[CoverageType]] = relationship(
         back_populates="plan", cascade="all, delete-orphan"
@@ -114,8 +115,8 @@ class Policy(Base):
     status: Mapped[str] = mapped_column(String(20), default="in_force")
 
     # Live usage counters (SPEC §3.3), incremented on settlement (milestone 4).
-    sum_insured_consumed: Mapped[Money] = mapped_column(Money, default="0")
-    deductible_consumed: Mapped[Money] = mapped_column(Money, default="0")
+    sum_insured_consumed: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
+    deductible_consumed: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
     # Per-coverage-type consumed, keyed by code; Decimal values stored as strings.
     sub_limit_consumed: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
 
@@ -188,7 +189,7 @@ class LineItem(Base):
     ref: Mapped[str] = mapped_column(String(40))  # ties back to the engine result
     coverage_type_code: Mapped[str] = mapped_column(String(40))
     billed_amount: Mapped[Money] = mapped_column(Money)
-    payable_amount: Mapped[Money] = mapped_column(Money, default="0")
+    payable_amount: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
     service_days: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[LineItemStatus] = mapped_column(
         _enum(LineItemStatus), default=LineItemStatus.SUBMITTED
@@ -218,7 +219,7 @@ class Reason(Base):
     ordinal: Mapped[int] = mapped_column(Integer, default=0)  # pipeline order
     code: Mapped[ReasonCode] = mapped_column(_enum(ReasonCode))
     message: Mapped[str] = mapped_column(Text)
-    amount_delta: Mapped[Money] = mapped_column(Money, default="0")
+    amount_delta: Mapped[Money] = mapped_column(Money, default=Decimal("0"))
     step: Mapped[PipelineStep] = mapped_column(_enum(PipelineStep))
 
     line_item: Mapped[LineItem | None] = relationship(back_populates="reasons")

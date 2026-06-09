@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ...domain.enums import ClaimStage, ClaimStatus
 from ...domain.models import LineItemInput
 from ...persistence import models as orm
-from ...service.claims import create_claim
+from ...service.claims import create_claim, resolve_review, settle_claim
 from .. import schemas, serialize
 from ..deps import get_session
 from ..errors import NotFound
@@ -73,3 +73,29 @@ def get_claim(claim_id: int, session: Session = Depends(get_session)):
 @router.get("/{claim_id}/explanation", response_model=schemas.ExplanationOut)
 def get_explanation(claim_id: int, session: Session = Depends(get_session)):
     return serialize.explanation_out(_get_claim(session, claim_id))
+
+
+@router.post(
+    "/{claim_id}/line-items/{line_item_id}/resolve-review",
+    response_model=schemas.ClaimOut,
+)
+def resolve_line_review(
+    claim_id: int,
+    line_item_id: int,
+    body: schemas.ResolveReviewRequest,
+    session: Session = Depends(get_session),
+):
+    claim = resolve_review(
+        session,
+        _get_claim(session, claim_id),
+        line_item_id=line_item_id,
+        decision=body.decision,
+        payable_amount=body.payable_amount,
+        note=body.note,
+    )
+    return serialize.claim_out(claim)
+
+
+@router.post("/{claim_id}/settle", response_model=schemas.ClaimOut)
+def settle(claim_id: int, session: Session = Depends(get_session)):
+    return serialize.claim_out(settle_claim(session, _get_claim(session, claim_id)))

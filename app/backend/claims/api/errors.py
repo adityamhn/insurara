@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from ..service.claims import ClaimError
+from ..service.claims import ClaimConflict, ClaimError
 
 
 class NotFound(HTTPException):
@@ -24,6 +24,10 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ClaimError)
     async def _claim_error(_: Request, exc: ClaimError) -> JSONResponse:
         return _envelope(400, "invalid_claim", str(exc))
+
+    @app.exception_handler(ClaimConflict)
+    async def _claim_conflict(_: Request, exc: ClaimConflict) -> JSONResponse:
+        return _envelope(409, "conflict", str(exc))
 
     @app.exception_handler(HTTPException)
     async def _http_error(_: Request, exc: HTTPException) -> JSONResponse:

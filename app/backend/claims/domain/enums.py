@@ -75,6 +75,7 @@ class ReasonCode(str, Enum):
     DEDUCTIBLE = "DEDUCTIBLE"
     COPAY = "COPAY"
     NEEDS_REVIEW = "NEEDS_REVIEW"
+    REVIEW_RESOLVED = "REVIEW_RESOLVED"  # human adjuster resolved an under_review line
 
 
 class PipelineStep(str, Enum):

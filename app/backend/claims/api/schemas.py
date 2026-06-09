@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -97,6 +98,12 @@ class ClaimCreate(BaseModel):
     member_id: int
     service_date: date
     line_items: list[LineItemCreate] = Field(min_length=1)
+
+
+class ResolveReviewRequest(BaseModel):
+    decision: Literal["approve", "partially_approve", "deny"]
+    payable_amount: Decimal | None = Field(default=None, gt=0)
+    note: str | None = None
 
 
 class ReasonOut(BaseModel):
