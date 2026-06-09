@@ -60,12 +60,14 @@ export default function NewClaimPage() {
     e.preventDefault();
     setError(null);
     if (policyId === "" || memberId === "") return;
+    const form = e.currentTarget as HTMLFormElement;
+    const submittedServiceDate = String(new FormData(form).get("service_date") ?? serviceDate);
     setSubmitting(true);
     try {
       const claim = await submitClaim({
         policy_id: policyId,
         member_id: memberId,
-        service_date: serviceDate,
+        service_date: submittedServiceDate,
         line_items: rows.map((r) => ({
           coverage_type_code: r.coverage_type_code,
           billed_amount: r.billed_amount,
@@ -127,11 +129,13 @@ export default function NewClaimPage() {
           <Field label="Service date">
             <input
               type="date"
+              name="service_date"
               required
               className="input"
               value={serviceDate}
               min={policy?.start_date}
               max={policy?.end_date}
+              onInput={(e) => setServiceDate(e.currentTarget.value)}
               onChange={(e) => setServiceDate(e.target.value)}
             />
           </Field>

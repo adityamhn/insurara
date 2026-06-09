@@ -30,6 +30,9 @@ export default async function ClaimDetailPage({
   }
 
   const hasReview = claim.line_items.some((li) => li.status === "under_review");
+  const hasOpenDispute =
+    claim.line_items.some((li) => li.status === "disputed") ||
+    claim.disputes.some((d) => d.state === "raised" || d.state === "under_review");
   const settled = claim.stage === "settled";
 
   return (
@@ -69,7 +72,7 @@ export default async function ClaimDetailPage({
             View EOB
           </Link>
           {!settled && <ReadjudicateButton claimId={claim.id} />}
-          {!settled && <SettleButton claimId={claim.id} disabled={hasReview} />}
+          {!settled && <SettleButton claimId={claim.id} disabled={hasReview || hasOpenDispute} />}
         </div>
       </div>
 

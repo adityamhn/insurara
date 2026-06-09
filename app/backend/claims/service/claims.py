@@ -193,11 +193,15 @@ def resolve_review(
 def settle_claim(session, claim: orm.Claim) -> orm.Claim:
     """Pay out approved/partially-approved line items and increment the policy's live
     usage counters (SPEC §3.3, §5.3). Counters move on settlement, not adjudication.
-    Guard: cannot settle while any line item is under review (→ 409)."""
+    Guard: cannot settle while any line item is under review or dispute is open (→ 409)."""
     if claim.stage is ClaimStage.SETTLED:
         raise ClaimConflict(f"claim {claim.id} is already settled")
     if any(li.status is LineItemStatus.UNDER_REVIEW for li in claim.line_items):
         raise ClaimConflict("cannot settle while a line item is under review")
+    if any(li.status is LineItemStatus.DISPUTED for li in claim.line_items):
+        raise ClaimConflict("cannot settle while a line item is disputed")
+    if any(d.state in (DisputeState.RAISED, DisputeState.UNDER_REVIEW) for d in claim.disputes):
+        raise ClaimConflict("cannot settle while a dispute is open")
 
     snapshot_dto, _ = load_snapshot_dtos(claim.snapshot)
     policy = claim.policy

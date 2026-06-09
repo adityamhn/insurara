@@ -54,6 +54,25 @@ def test_settle_is_blocked_while_a_line_is_under_review(client):
     assert resp.json()["error"]["code"] == "conflict"
 
 
+def test_settle_is_blocked_while_a_dispute_is_open(client):
+    partial = client.get("/api/claims", params={"status": "partially_approved"}).json()
+    claim = client.get(f"/api/claims/{partial[0]['id']}").json()
+    line = next(li for li in claim["line_items"] if li["status"] == "partially_approved")
+    dispute = client.post(
+        f"/api/claims/{claim['id']}/disputes",
+        json={"line_item_id": line["id"], "reason_text": "payable amount looks wrong"},
+    )
+    assert dispute.status_code == 201
+
+    resp = client.post(f"/api/claims/{claim['id']}/settle")
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == "conflict"
+
+    detail = client.get(f"/api/claims/{claim['id']}").json()
+    assert detail["stage"] == "under_adjudication"
+    assert next(li for li in detail["line_items"] if li["id"] == line["id"])["status"] == "disputed"
+
+
 def test_double_settle_conflicts(client):
     pid, mid = _policy_and_member(client, "AS3L-CLEAN-0003")
     claim = _surgery_claim(client, pid, mid, "90000")

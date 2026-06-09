@@ -205,7 +205,7 @@ export function SettleButton({ claimId, disabled }: { claimId: number; disabled:
       <button
         className={`${btn} bg-emerald-600 text-white hover:bg-emerald-700`}
         disabled={busy || disabled}
-        title={disabled ? "Resolve all reviews first" : undefined}
+        title={disabled ? "Resolve all reviews and disputes first" : undefined}
         onClick={() => run(() => settleClaim(claimId))}
       >
         Settle claim
