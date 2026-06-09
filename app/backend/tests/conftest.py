@@ -26,3 +26,19 @@ def seeded(session):
     claims = seed(session)
     session.commit()
     return session, claims
+
+
+@pytest.fixture
+def client(tmp_path):
+    """A TestClient backed by a seeded temp DB (full app, real adjudication)."""
+    from fastapi.testclient import TestClient
+
+    from claims.api.app import create_app
+
+    engine = make_engine(f"sqlite:///{tmp_path / 'api.db'}")
+    init_db(engine)
+    factory = make_session_factory(engine)
+    with factory() as s:
+        seed(s)
+        s.commit()
+    return TestClient(create_app(factory))
