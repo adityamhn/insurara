@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Data-dense claims UI: one clean light theme for legibility (and stable
+   screenshots), independent of the OS dark-mode preference. */
+html {
+  background: #f8fafc; /* slate-50 */
+  color: #0f172a; /* slate-900 */
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
