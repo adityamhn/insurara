@@ -2,6 +2,19 @@
 
 My honest read on what's solid, what's thin, and what I'd do next.
 
+## Reviewer summary
+
+| Area | My read |
+|------|---------|
+| Core adjudication | Strong: pure engine, Decimal money, worked example, one test per rule step. |
+| Explanation/EOB | Strong: reasons are emitted by the rule steps and rendered directly. |
+| Lifecycle | Solid: line-item machine, derived claim status, settlement/dispute guards. |
+| UI | Good demo coverage; intentionally simple, no automated E2E suite. |
+| Production gaps | Known: settlement concurrency, auth/encryption, pagination, richer review logic. |
+
+The main thing I would ask a reviewer to inspect is claim #2's waterfall and claim #6's
+review flow. Those two screens show the hardest domain decisions.
+
 ## What I'm happy with
 
 - **The adjudication engine.** It's a pure, deterministic module with no database or HTTP

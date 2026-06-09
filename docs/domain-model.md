@@ -7,6 +7,30 @@ round-trip to model.
 This document describes the domain model — the entities, the two state machines, and where
 each lives in the code.
 
+## Read this first
+
+The system has one core idea: **line items are decided independently, then the claim is
+derived from those line decisions.** Everything else exists to make those decisions stable
+and explainable.
+
+```mermaid
+flowchart TD
+  Policy["Policy + live usage counters"] --> Snapshot["PolicySnapshot at claim creation"]
+  Claim["Claim"] --> LineItems["LineItem[]"]
+  Snapshot --> Engine["Pure adjudication engine"]
+  LineItems --> Engine
+  Engine --> LineResults["Line results: status, payable, Reason[]"]
+  LineResults --> ClaimStatus["Derived claim status + stage"]
+  LineResults --> EOB["Explanation of Benefits waterfall"]
+  Settlement["Settlement"] --> Usage["Increment live usage counters"]
+```
+
+The three rules reviewers usually care about:
+
+1. The engine reads the snapshot, not the live policy.
+2. The claim status is derived from line statuses, not assigned manually.
+3. The ordered reasons are the EOB; there is no separate explanation system.
+
 ---
 
 ## 1. Entities and relationships
@@ -84,17 +108,26 @@ are a byproduct of how adjudication runs, not bolted on afterwards.
 Built as explicit enums + a transition function (`app/backend/claims/domain/state_machine.py`).
 Status is never a bare string.
 
-### 3.1 Line item — its own machine
+```mermaid
+flowchart LR
+  Submitted["submitted"] --> Approved["approved"]
+  Submitted --> Partial["partially_approved"]
+  Submitted --> Denied["denied"]
+  Submitted --> Review["under_review"]
+  Review --> Approved
+  Review --> Partial
+  Review --> Denied
+  Approved --> Paid["paid"]
+  Partial --> Paid
+  Approved --> Disputed["disputed"]
+  Partial --> Disputed
+  Denied --> Disputed
+  Disputed --> Approved
+  Disputed --> Partial
+  Disputed --> Denied
+```
 
-```
-submitted ──engine: clear decision──▶ approved | partially_approved | denied
-submitted ──engine: high value──────▶ under_review
-under_review ──adjuster resolves────▶ approved | partially_approved | denied
-approved | partially_approved ──────▶ paid
-approved | partially_approved | denied ──member contests──▶ disputed
-disputed ──overturned───────────────▶ approved | partially_approved
-disputed ──upheld───────────────────▶ (prior decision restored, incl. denied)
-```
+### 3.1 Line item — its own machine
 
 - `paid` is terminal (no `disputed` edge) — settled lines aren't disputed in this build.
 - `under_review` carries the engine's fully-computed, rules-capped payable; the adjuster

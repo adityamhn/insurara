@@ -1,12 +1,43 @@
 # Decisions & Trade-offs
 
-Two parts: the **design decisions** (the shape of the domain and why), and the
-**implementation notes** (concrete calls made while building — including where the
-requirements were ambiguous or a bug forced a choice).
+This file is written for an assignment reviewer. The short version is first; the detailed
+notes are below only when a reviewer wants to inspect the reasoning.
+
+## The short version
+
+The system optimizes for **domain correctness, explainability, and testability** over
+framework breadth.
+
+```mermaid
+flowchart TD
+  Rules["CoverageType rows\ncovered, limits, waiting period, proportionate flags"]
+  Pipeline["Fixed adjudication pipeline\nsmall pure steps"]
+  Reasons["Ordered Reason[]\nEOB waterfall"]
+  States["Line statuses\nclaim status derived"]
+  Snapshot["PolicySnapshot\nfrozen at claim creation"]
+
+  Rules --> Pipeline
+  Pipeline --> Reasons
+  Pipeline --> States
+  Snapshot --> Pipeline
+```
+
+The five decisions that matter most:
+
+| Decision | Why it matters |
+|----------|----------------|
+| **Rules as data + fixed pipeline** | Coverage terms are inspectable rows; rule order stays readable and testable. |
+| **Pure adjudication engine** | Domain logic is deterministic and covered by unit tests, independent of API/DB/UI. |
+| **Policy snapshots** | Old claims do not change when a policy is edited later. |
+| **Claim status derived from line items** | Correctly handles partial approvals and the "3 covered, 1 denied, 1 needs review" case. |
+| **Reasons generated during adjudication** | The UI/API explanation is the actual decision trail, not a separate reconstruction. |
+
+Everything else is a scoped simplification: one health line of business, one payable amount,
+SQLite without migrations, no auth/encryption, no fraud/OCR/notifications.
 
 ---
 
-## Design decisions
+## Full decision list
 
 | Decision | Why |
 |----------|-----|

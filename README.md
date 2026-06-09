@@ -11,6 +11,28 @@ state from its line items → explain every deduction → dispute and re-derive.
 See `docs/domain-model.md`, `docs/decisions.md`, and `docs/self-review.md` for the design,
 trade-offs, and an honest gap list.
 
+## Reviewer quick map
+
+Start with this mental model:
+
+```mermaid
+flowchart LR
+  Submit["Submit claim"] --> Snapshot["Freeze policy snapshot"]
+  Snapshot --> Engine["Pure adjudication engine"]
+  Engine --> Reasons["Line decisions + reason waterfall"]
+  Reasons --> Status["Claim status derived from line items"]
+  Status --> Actions["Review, dispute, settle"]
+```
+
+What to look for first:
+
+1. Claim #2 proves the hard Indian-health rule: room-rent cap triggers proportionate
+   deduction, but pharmacy and diagnostics are not scaled.
+2. Claim #6 proves parent status derivation: a claim with decided lines plus one
+   `under_review` line stays `needs_review` until the adjuster resolves it.
+3. The claim detail page is the product: it shows the full Explanation of Benefits
+   waterfall, not just a final payable number.
+
 ```
 app/
   backend/    FastAPI + engine + persistence + tests   (claims/, tests/)
@@ -59,6 +81,46 @@ uv run pytest tests/test_worked_example.py     # the worked example (₹64,000 �
 ```
 The engine tests encode domain rules (one per pipeline step + the composite worked example),
 not just HTTP status codes. Frontend checks: `cd app/frontend && npm run lint && npm run build`.
+
+---
+
+## Visual walkthrough
+
+The seeded app is designed so a reviewer can understand the system in a few clicks.
+
+### 1. Claims list
+
+Start at the claims list. The seven seeded claims each demonstrate one rule or lifecycle
+case.
+
+![Claims list](docs/screenshots/01-claims-list.png)
+
+### 2. Claim detail and reason waterfall
+
+Open claim #2. Each line item shows billed amount, every reduction reason, payable amount,
+and member share.
+
+![Claim detail reason waterfall](docs/screenshots/02-claim-waterfall.png)
+
+### 3. Printable EOB
+
+The EOB uses the same `Reason[]` data as the detail page and API explanation endpoint.
+
+![Explanation of Benefits](docs/screenshots/03-eob-explanation.png)
+
+### 4. Adjuster review
+
+Open claim #6. One high-value line is routed to review; resolving it re-derives the claim
+status.
+
+![Adjuster review workflow](docs/screenshots/04-review-workflow.png)
+
+### 5. Policy usage
+
+After settlement, the policy page shows live usage counters moving. Adjudication itself
+uses the frozen snapshot taken when the claim was created.
+
+![Policy usage](docs/screenshots/05-policy-usage.png)
 
 ---
 
