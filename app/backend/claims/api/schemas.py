@@ -19,6 +19,7 @@ from ..domain.enums import (
     DisputeState,
     LineItemStatus,
     PipelineStep,
+    PolicyStatus,
     ReasonCode,
     SubLimitBasis,
     SubLimitType,
@@ -77,7 +78,7 @@ class PolicyOut(BaseModel):
     plan_name: str
     start_date: date
     end_date: date
-    status: str
+    status: PolicyStatus
     members: list[PolicyMemberOut]
     usage: UsageOut
 

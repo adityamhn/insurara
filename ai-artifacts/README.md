@@ -9,5 +9,4 @@ coding, docs, testing, QA).
 - `codex/` — Codex CLI sessions.
 
 These are verbatim transcripts as written by each agent — no curation, summarization, or
-trimming. The repo `README.md` ("AI collaboration artifacts") documents the exact source
-paths and copy commands used to refresh them.
+trimming. They were copied straight from each agent's session directory.

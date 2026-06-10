@@ -16,6 +16,7 @@ from ..domain.enums import (
     DisputeState,
     LineItemStatus,
     PipelineStep,
+    PolicyStatus,
     ReasonCode,
     SubLimitBasis,
     SubLimitType,
@@ -51,8 +52,10 @@ def create_claim(
     policy = session.get(orm.Policy, policy_id)
     if policy is None:
         raise ClaimError(f"policy {policy_id} not found")
-    if policy.status != "in_force":
-        raise ClaimError(f"policy {policy.policy_number} is {policy.status}; cannot accept claims")
+    if policy.status is not PolicyStatus.IN_FORCE:
+        raise ClaimError(
+            f"policy {policy.policy_number} is {policy.status.value}; cannot accept claims"
+        )
     if not (policy.start_date <= service_date <= policy.end_date):
         raise ClaimError(
             f"service date {service_date} is outside the policy period "
@@ -139,6 +142,10 @@ def resolve_review(
     """Human adjuster resolves an under_review line item, then the claim re-derives
 . This is the back half of the "3 covered, 1 denied, 1 needs review"
     loop: once the review is resolved the claim drops out of needs_review."""
+    if claim.stage in (ClaimStage.SETTLED, ClaimStage.CLOSED):
+        raise ClaimConflict(
+            f"claim {claim.id} is {claim.stage.value}; reviews can no longer be resolved"
+        )
     line = next((li for li in claim.line_items if li.id == line_item_id), None)
     if line is None:
         raise ClaimError(f"line item {line_item_id} is not on claim {claim.id}")
@@ -185,7 +192,12 @@ def resolve_review(
     # Re-derive the claim from the new set of line-item states.
     status, stage = derive_claim_state([li.status for li in claim.line_items])
     claim.status, claim.stage = status, stage
-    _log(session, claim, f"Review resolved on line {line.ref}: {verb}.", actor="adjuster")
+    _log(
+        session,
+        claim,
+        f"Review resolved on line {claim.line_items.index(line) + 1}: {verb}.",
+        actor="adjuster",
+    )
     session.flush()
     return claim
 
@@ -294,7 +306,7 @@ def raise_dispute(
     session.add(dispute)
     # Re-open the claim while the dispute is pending (status left as last derived).
     claim.stage = ClaimStage.UNDER_ADJUDICATION
-    target = f"line {line.ref}" if line else "claim"
+    target = f"line {claim.line_items.index(line) + 1}" if line else "claim"
     _log(session, claim, f"Dispute raised on {target}: {reason_text}", actor="member")
     session.flush()
     return dispute

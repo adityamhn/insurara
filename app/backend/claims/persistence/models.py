@@ -35,6 +35,7 @@ from ..domain.enums import (
     DisputeState,
     LineItemStatus,
     PipelineStep,
+    PolicyStatus,
     ReasonCode,
     SubLimitBasis,
     SubLimitType,
@@ -112,7 +113,7 @@ class Policy(Base):
     plan_id: Mapped[int] = mapped_column(ForeignKey("coverage_plans.id"))
     start_date: Mapped[date] = mapped_column()
     end_date: Mapped[date] = mapped_column()
-    status: Mapped[str] = mapped_column(String(20), default="in_force")
+    status: Mapped[PolicyStatus] = mapped_column(_enum(PolicyStatus), default=PolicyStatus.IN_FORCE)
 
     # Live usage counters, incremented on settlement.
     sum_insured_consumed: Mapped[Money] = mapped_column(Money, default=Decimal("0"))

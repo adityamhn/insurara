@@ -14,7 +14,7 @@ system with the *same* code paths the REST API and UI use.
 ```bash
 cd app/backend
 uv sync
-uv run python -m claims.seed                 # seed the 8 demo scenarios
+uv run python -m claims.seed                 # seed the demo data (8 scenarios across 7 claims)
 uv run uvicorn claims.api.app:app --port 8000
 ```
 
@@ -90,6 +90,13 @@ Design and thought process:
 - "What production gap would you close first: settlement concurrency, auth/encryption, or
   frontend E2E tests, and why?"
 - "From the decisions doc, why was needs-review moved to run last in the pipeline?"
+- "Why is money stored as TEXT in SQLite instead of a numeric column?"
+- "Why is the deductible applied once per claim, but co-payment per line item?"
+- "Where does the sum-insured ceiling sit relative to proportionate deduction, and when
+  would the other ordering give a different answer?"
+- "What is the known double-spend window in settlement, and what would fix it?"
+- "Why are there no Alembic migrations?"
+- "Why does `readjudicate` discard manual review and dispute outcomes?"
 
 ## 5. Notes
 - The MCP server is mounted in the FastAPI process (`claims.api.app:create_app`), not a

@@ -41,7 +41,7 @@ from ..domain.money import ZERO, quantize, rupee
 from ..domain.state_machine import derive_claim_state
 from .context import AdjudicationContext, StepResult
 from .steps import (
-    _rupees,
+    format_rupees,
     step_copay,
     step_coverage,
     step_needs_review,
@@ -231,8 +231,8 @@ def _balance_pass(
                     Reason(
                         code=ReasonCode.SUB_LIMIT_EXHAUSTED,
                         message=(
-                            f"Only {_rupees(remaining_sub[code])} of the annual "
-                            f"{rule.name} sub-limit remains; {_rupees(excess)} is not payable."
+                            f"Only {format_rupees(remaining_sub[code])} of the annual "
+                            f"{rule.name} sub-limit remains; {format_rupees(excess)} is not payable."
                         ),
                         amount_delta=-excess,
                         step=PipelineStep.BALANCE,
@@ -255,8 +255,8 @@ def _balance_pass(
                 Reason(
                     code=ReasonCode.SUM_INSURED_EXHAUSTED,
                     message=(
-                        f"Only {_rupees(remaining_si)} of the sum insured remains; "
-                        f"{_rupees(excess)} is not payable."
+                        f"Only {format_rupees(remaining_si)} of the sum insured remains; "
+                        f"{format_rupees(excess)} is not payable."
                     ),
                     amount_delta=-excess,
                     step=PipelineStep.BALANCE,
@@ -299,7 +299,7 @@ def _deductible_pass(
         ctx.reasons.append(
             Reason(
                 code=ReasonCode.DEDUCTIBLE,
-                message=f"{_rupees(absorbed)} applied toward the annual deductible.",
+                message=f"{format_rupees(absorbed)} applied toward the annual deductible.",
                 amount_delta=-absorbed,
                 step=PipelineStep.DEDUCTIBLE,
             )

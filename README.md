@@ -30,8 +30,8 @@ What to look for first:
    deduction, but pharmacy and diagnostics are not scaled.
 2. Claim #6 proves parent status derivation: a claim with decided lines plus one
    `under_review` line stays `needs_review` until the adjuster resolves it.
-3. The claim detail page is the product: it shows the full Explanation of Benefits
-   waterfall, not just a final payable number.
+3. The claim detail page is the primary review surface: it shows the full Explanation of
+   Benefits waterfall, not just a final payable number.
 
 ```
 app/
@@ -76,7 +76,7 @@ cd app/frontend && npm install && npm run dev
 
 ### Tests
 ```bash
-cd app/backend && uv run pytest -q             # 96 tests
+cd app/backend && uv run pytest -q             # 97 tests
 uv run pytest tests/test_worked_example.py     # the worked example (₹64,000 → ₹41,400)
 ```
 The engine tests encode domain rules (one per pipeline step + the composite worked example),
@@ -126,8 +126,8 @@ uses the frozen snapshot taken when the claim was created.
 
 ## Walking the demo (7 seeded claims + settlement flow)
 
-Open http://localhost:3000 — the claims list shows seven seeded claims. Each tells one
-part of the story; settlement is a flow you can run on any decided claim.
+Open http://localhost:3000 — the claims list shows seven seeded claims. Each demonstrates
+one rule or lifecycle case; settlement can run on any decided claim.
 
 | Claim | Scenario | What it shows |
 |------:|----------|---------------|
@@ -140,7 +140,7 @@ part of the story; settlement is a flow you can run on any decided claim.
 | #7 | **Family floater** | a dependent draws on the same policy/pool as the primary |
 | (any) | **Settle** | settle an approved/partial claim → lines `paid`, then open its policy to see the usage bar move |
 
-The **claim-detail page** is the centerpiece: each line item renders a reason-waterfall
+The **claim-detail page** is the primary review surface: each line item renders a reason-waterfall
 (billed → each deduction with its amount and message → payable), so you can see *why*
 ₹8,000 became ₹5,000. The same data is available as a printable EOB and via
 `GET /api/claims/{id}/explanation`.

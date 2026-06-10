@@ -42,14 +42,14 @@ SQLite without migrations, no auth/encryption, no fraud/OCR/notifications.
 | Decision | Why |
 |----------|-----|
 | **One line of business (health), with clean seams** — not a generic multi-line framework | A fully generic multi-product framework is overkill here; keep the clean seam (`Claim → LineItem` adjudicated by a configurable rule set) without the cost of real genericity. |
-| **Coverage rules as data (a decision table)** — rows + an ordered pipeline, not `if/else`, not a DSL | Inspectable, testable, and configurable — the sweet spot between rigid conditionals and an over-built DSL. This is the centerpiece of the system. |
+| **Coverage rules as data (a decision table)** — rows + an ordered pipeline, not `if/else`, not a DSL | Inspectable, testable, and configurable without introducing a custom rules language. This is the core design choice. |
 | **3-level coverage model** `CoveragePlan → CoverageType → per-Policy values` | The template-vs-instance split (reusable rules vs. per-customer config) is the valuable idea; deeper layering buys nothing at this scale. |
 | **Two state machines; claim status DERIVED from line items; claim has stage + status** | The derived-parent-from-children mechanic is exactly the "partial approval" problem worth modelling. |
 | **Independent per-line adjudication; proportionate deduction as an Indian reduction reason** | Answers "3 covered, 1 denied, 1 needs review"; proportionate deduction makes the demo domain-rich. |
 | **Explanations = a pipeline of reasons (append-only log)** | The accumulated `Reason[]` *is* the EOB; not bolted on. |
-| **Policy snapshots** — adjudicate against frozen terms | Later edits to a policy can't change a past claim's outcome. |
+| **Policy snapshots** — adjudicate against frozen terms | Later edits to a policy cannot change a past claim's outcome. |
 | **`Claim → LineItem`; outcome per line, mapped to a coverage type** | Matches the insurance vocabulary. |
-| **Single payable per line; no reserves/payments; keep the auto-decide-vs-review threshold** | Reserves serve long-running P&C claims, not health reimbursement; the human-review split is the realistic, demoable part. |
+| **Single payable per line; no reserves/payments; keep the auto-decide-vs-review threshold** | Reserves serve long-running P&C claims, not health reimbursement; the human-review boundary is the relevant workflow here. |
 | **Sensitive data documented, not enforced** | Fields tagged in the schema; column-encryption + reader-role access described, not built (out of scope). |
 | **Member separate from their role on a policy** → family floater | A `PolicyMember` join with a role; multiple members share one sum insured. |
 | **Next.js + FastAPI REST, a real web app** | A demonstrable product with a clean API boundary. |
@@ -84,12 +84,12 @@ pass.
 Proportionate deduction is cross-line (room-rent breach scales *other* lines), and the
 deductible is a single per-claim amount. Both are claim-level passes, not per-line steps.
 The per-year sub-limit / sum-insured balance pass threads in-claim consumption across lines
-so a claim can't exceed a limit by splitting an amount across line items.
+so one claim cannot exceed a limit by splitting an amount across line items.
 
 ### Deductible: claim-level, once, after the proportionate pass
-The deductible is a single per-claim amount, so it's applied once at claim level after the
+The deductible is a single per-claim amount, so it is applied once at claim level after the
 proportionate pass (the cleaner of the orderings). Co-payment is applied **per line** —
-mathematically identical to a claim-level copay (it's linear) and keeps each line's waterfall
+mathematically identical to a claim-level copay (it is linear) and keeps each line's waterfall
 self-contained.
 
 ### Needs-review runs LAST (step 8), and the adjuster is bounded by the computed amount
@@ -114,7 +114,7 @@ exactly.
 
 ### Settlement & lifecycle guards
 Counters increment on settlement, not adjudication. Settlement is blocked (409) if any line
-is `under_review`, any line is `disputed`, or any dispute is open — so a claim can't reach
+is `under_review`, any line is `disputed`, or any dispute is open — so a claim cannot reach
 `settled` with unresolved state. Disputes are handled before settlement (a `paid` line has
 no `disputed` edge in the line-item machine; a settled claim is closed to disputes).
 
@@ -129,9 +129,9 @@ seed. The URL is swappable (`CLAIMS_DB_URL`) so Postgres is a config change.
 
 ### Frontend data flow
 Server Components fetch reads (`no-store`); Client Components do mutations then
-`router.refresh()`. No SWR/React Query — fewer deps, and the server-render keeps the
-reason-waterfall fast and SEO-trivial. Money rendered from the exact decimal strings, never
-parsed to float for arithmetic.
+`router.refresh()`. No SWR/React Query — fewer dependencies, and server rendering keeps the
+reason-waterfall simple. Money is rendered from exact decimal strings, never parsed to float
+for arithmetic.
 
 ---
 

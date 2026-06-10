@@ -25,7 +25,7 @@ from ..domain.money import ZERO, quantize, rupee
 from .context import AdjudicationContext, StepResult
 
 
-def _rupees(amount: Decimal) -> str:
+def format_rupees(amount: Decimal) -> str:
     """Format an amount for human-readable Reason messages, e.g. ₹5,000.00."""
     return f"₹{amount:,.2f}"
 
@@ -95,9 +95,9 @@ def step_needs_review(ctx: AdjudicationContext) -> StepResult:
                 Reason(
                     code=ReasonCode.NEEDS_REVIEW,
                     message=(
-                        f"Routed for manual review: billed {_rupees(ctx.line.billed_amount)} "
-                        f"exceeds the {_rupees(threshold)} auto-adjudication threshold "
-                        f"(rules-allowed payable so far: {_rupees(ctx.payable)})."
+                        f"Routed for manual review: billed {format_rupees(ctx.line.billed_amount)} "
+                        f"exceeds the {format_rupees(threshold)} auto-adjudication threshold "
+                        f"(rules-allowed payable so far: {format_rupees(ctx.payable)})."
                     ),
                     amount_delta=ZERO,
                     step=PipelineStep.NEEDS_REVIEW,
@@ -148,8 +148,8 @@ def step_sub_limit_cap(ctx: AdjudicationContext) -> StepResult:
             Reason(
                 code=ReasonCode.SUB_LIMIT,
                 message=(
-                    f"{rule.name} is capped at {_rupees(cap)}; billed "
-                    f"{_rupees(ctx.payable)}; {_rupees(excess)} exceeds the sub-limit."
+                    f"{rule.name} is capped at {format_rupees(cap)}; billed "
+                    f"{format_rupees(ctx.payable)}; {format_rupees(excess)} exceeds the sub-limit."
                 ),
                 amount_delta=-excess,
                 step=PipelineStep.SUB_LIMIT,
@@ -171,7 +171,12 @@ def step_copay(ctx: AdjudicationContext) -> StepResult:
         reasons=[
             Reason(
                 code=ReasonCode.COPAY,
-                message=(f"{pct:g}% co-payment ({_rupees(member_share)}) is borne by the member."),
+                # normalize() so the percent reads the same whether the terms came fresh
+                # from the plan (10) or from the snapshot's JSON round-trip (10.00).
+                message=(
+                    f"{pct.normalize():f}% co-payment ({format_rupees(member_share)}) "
+                    "is borne by the member."
+                ),
                 amount_delta=-member_share,
                 step=PipelineStep.COPAY,
             )

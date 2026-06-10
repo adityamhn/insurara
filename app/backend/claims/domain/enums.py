@@ -36,6 +36,13 @@ class ClaimStatus(str, Enum):
     NEEDS_REVIEW = "needs_review"
 
 
+class PolicyStatus(str, Enum):
+    """Policy lifecycle — only an in-force policy accepts new claims."""
+
+    IN_FORCE = "in_force"
+    LAPSED = "lapsed"
+
+
 class DisputeState(str, Enum):
     """Dispute lifecycle. Defined here so the domain vocabulary lives in one place."""
 

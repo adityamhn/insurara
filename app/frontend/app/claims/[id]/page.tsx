@@ -121,7 +121,10 @@ export default async function ClaimDetailPage({
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-700">
                   Dispute #{d.id}
-                  {d.line_item_id ? ` · line ${d.line_item_id}` : " · claim-level"}
+                  {/* 1-based position on the claim, matching the activity log wording */}
+                  {d.line_item_id
+                    ? ` · line ${claim.line_items.findIndex((li) => li.id === d.line_item_id) + 1}`
+                    : " · claim-level"}
                 </span>
                 <StatusBadge value={d.state} />
               </div>
